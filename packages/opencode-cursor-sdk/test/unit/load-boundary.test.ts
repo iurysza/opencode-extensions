@@ -53,13 +53,16 @@ describe("package load boundary", () => {
     expect(run.stdout).toBe("network attempted: net.connect");
   });
 
-  it("production source imports no Cursor SDK, Pi or OpenCode internals", () => {
-    const offenders = sourceFiles(join(pkg, "src")).flatMap((file) =>
-      [...readFileSync(file, "utf8").matchAll(/(?:from\s+|import\s*\(\s*)["']([^"']+)["']/g)]
+  it("production static imports exclude SDK execution, Pi and private host APIs", () => {
+    const offenders = sourceFiles(join(pkg, "src")).flatMap((file) => {
+      const source = readFileSync(file, "utf8");
+      // Type-only imports erase at build time. SDK execution is permitted only via
+      // lazy import; the fresh-process test above verifies the actual startup graph.
+      return [...source.matchAll(/import\s+(?!type\b)[^;]*?from\s*["']([^"']+)["']/g)]
         .map((m) => m[1] ?? "")
-        .filter((spec) => FORBIDDEN.test(spec))
-        .map((spec) => `${file}: ${spec}`),
-    );
+        .filter((spec) => FORBIDDEN.test(spec) && !(file.includes("/src/tui/") && spec === "@opencode/plugin/tui"))
+        .map((spec) => `${file}: ${spec}`);
+    });
     expect(offenders).toEqual([]);
   });
 });

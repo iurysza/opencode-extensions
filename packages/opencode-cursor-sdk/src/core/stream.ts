@@ -9,7 +9,10 @@ export type StreamPart =
   | { readonly type: "text-start"; readonly id: string }
   | { readonly type: "text-delta"; readonly id: string; readonly delta: string }
   | { readonly type: "text-end"; readonly id: string }
-  | { readonly type: "tool-input-start"; readonly id: string; readonly toolName: string; readonly providerExecuted: true }
+  | { readonly type: "reasoning-start"; readonly id: string }
+  | { readonly type: "reasoning-delta"; readonly id: string; readonly delta: string }
+  | { readonly type: "reasoning-end"; readonly id: string }
+  | { readonly type: "tool-input-start"; readonly id: string; readonly toolName: string; readonly providerExecuted: boolean }
   | { readonly type: "tool-input-delta"; readonly id: string; readonly delta: string }
   | { readonly type: "tool-input-end"; readonly id: string }
   | {
@@ -17,7 +20,7 @@ export type StreamPart =
       readonly toolCallId: string;
       readonly toolName: string;
       readonly input: string;
-      readonly providerExecuted: true;
+      readonly providerExecuted: boolean;
     }
   | {
       readonly type: "tool-result";
@@ -28,7 +31,7 @@ export type StreamPart =
     }
   | {
       readonly type: "finish";
-      readonly finishReason: { readonly unified: "stop" | "length" | "other"; readonly raw: string };
+      readonly finishReason: { readonly unified: "stop" | "length" | "other" | "tool-calls"; readonly raw: string };
       readonly usage: {
         readonly inputTokens: { total: undefined; noCache: undefined; cacheRead: undefined; cacheWrite: undefined };
         readonly outputTokens: { total: undefined; text: undefined; reasoning: undefined };
@@ -65,8 +68,13 @@ export async function* translateTurn(events: AsyncIterable<CursorTurnEvent>): As
   let closed = false;
   let textId: string | undefined;
   let textCount = 0;
+  let reasoningId: string | undefined;
 
   const closeText = function* (): Generator<StreamPart> {
+    if (reasoningId !== undefined) {
+      yield { type: "reasoning-end", id: reasoningId };
+      reasoningId = undefined;
+    }
     if (textId !== undefined) {
       yield { type: "text-end", id: textId };
       textId = undefined;
@@ -82,11 +90,34 @@ export async function* translateTurn(events: AsyncIterable<CursorTurnEvent>): As
       if (closed) break;
       switch (event.type) {
         case "text": {
+          if (reasoningId !== undefined) {
+            yield { type: "reasoning-end", id: reasoningId };
+            reasoningId = undefined;
+          }
           if (textId === undefined) {
             textId = `text-${textCount++}`;
             yield { type: "text-start", id: textId };
           }
           yield { type: "text-delta", id: textId, delta: event.text };
+          break;
+        }
+        case "thinking": {
+          if (textId !== undefined) {
+            yield { type: "text-end", id: textId };
+            textId = undefined;
+          }
+          if (reasoningId === undefined) {
+            reasoningId = `reasoning-${textCount++}`;
+            yield { type: "reasoning-start", id: reasoningId };
+          }
+          yield { type: "reasoning-delta", id: reasoningId, delta: event.text };
+          break;
+        }
+        case "bridge-tool-call": {
+          if (calls.has(event.callId)) throw new StreamContractError("duplicate-call", "Duplicate bridge call");
+          yield* closeText();
+          calls.set(event.callId, { toolName: event.toolName, settled: true });
+          yield { type: "tool-call", toolCallId: event.callId, toolName: event.toolName, input: JSON.stringify(event.input), providerExecuted: false };
           break;
         }
         case "native-tool-call": {

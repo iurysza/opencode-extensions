@@ -223,3 +223,13 @@ Added per-package release-please manifest/config, portable verification, optiona
 Lead verification used a HEAD export at `.fixtures/release-commit-check` with only this release slice overlaid, excluding concurrent runtime and metadata edits. `npm ci --ignore-scripts`, build, check, all 17 release tests, and both local package inspections passed. Every release JavaScript file passed `node --check`; workflow YAML and each Bash run block parsed. These are local checks, not a GitHub Actions run or a publication. Logs: `.fixtures/lead-verification/release-snapshot-*.log`.
 
 Activation, remote choice and the Cursor terms review remain pending. No push, tag, release, publish, merge or history rewrite occurred.
+
+## 2026-11-05: foreground Cloud safety core independently verified
+
+Added the foreground Cloud source, pure layered configuration and acknowledgment rules, strict Git-state probe, durable session-owned lifecycle ledger and public host-storage adapter. Runtime composition is a separate in-progress slice. Each turn creates a fresh agent; there is no Cloud adoption or resume. Agent and run writes precede their dependent actions. Unknown lifecycle intents block retries, and shutdown detaches without cancelling remote work.
+
+Review reproduced a late-create race during deferred model selection. The source now checks interruption, detachment and shutdown immediately after selection resolves and before create. Deferred shutdown and abort tests failed before the fix and pass afterward; no create/send occurs after release. The core has 170 fake/local-fixture tests, including 107 strict Git cases.
+
+The lead verified this slice at `.fixtures/foreground-commit-check`, a HEAD export overlaid only with the core, shared turn event/stream contracts, its tests and the type-erasure/lazy-import guard update. Install, build, check and existing endpoint host regressions passed. The first check exposed the old spike guard rejecting type-only and lazy SDK references; overlaying its revised guard fixed that assertion while preserving fresh-process no-SDK/no-network startup checks. Logs: `.fixtures/lead-verification/foreground-snapshot-*.log`.
+
+This is T1/local evidence only. Real Cloud behavior, live SDK requalification, final provider/control routing and user-facing commands are not claimed here. No Cursor call or external release action ran.
