@@ -4,7 +4,7 @@ Run these commands from the `linux-sandbox` repository root on a Linux x64 or AR
 
 ## Prepare the host
 
-Use Node.js 22.22.3, as pinned in CI, and npm. Keep system `tar` available for fixture extraction. On Debian or Ubuntu, install the sandbox tools:
+Use Node.js 22.22.3, as pinned in CI, and npm. Node 22.18.0 also passed the full Linux run on 2026-11-05. Keep system `tar` available for fixture extraction. On Debian or Ubuntu, install the sandbox tools:
 
 ```sh
 sudo apt-get update
