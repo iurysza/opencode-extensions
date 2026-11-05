@@ -1,6 +1,6 @@
 # rel1 release automation
 
-Status: local implementation only. Release activation and the remote choice remain pending in Inbox `msg_redacted`. The proposed remote is `iurysza/opencode-extensions`, not a created or configured repository. The alternative Pi repository remains undecided.
+Status: built and verified locally; activation remains disabled. Iury chose `iurysza/opencode-extensions` in Inbox message `msg_redacted`. That repository has not been created or configured by this work. Push, publication and release activation still require separate approval.
 
 ## Release flow
 
@@ -27,11 +27,11 @@ Keep repository variable `RELEASE_AUTOMATION_ENABLED` unset or different from `t
 
 Before activation, the integrator must complete these requirements:
 
-- Record Iury's remote choice and separate approval for remote actions.
+- Remote choice is recorded as `iurysza/opencode-extensions`. Obtain separate approval before remote actions.
 - Record Cursor G8 terms review, license review, and the manual release gate. Automated pack checks do not satisfy terms review.
 - Finish the remaining contract gates. Local release automation does not establish feature parity or live-test approval.
 - Prepare approved child publish configuration and remove child `private: true`. Leave the root private. Current children intentionally remain private.
-- Integrate `node --test scripts/release-*.test.mjs` and `node scripts/release-check.mjs pack` into the root verification path after a build. This worker does not own root scripts or the lockfile.
+- Root verification is integrated: `npm run check` runs all script tests, type contracts and unit tests; `npm run check:packs` inspects both built tarballs. Portable CI builds first and runs these checks. Final lead verification passed.
 - Review the first release PR's package versions, shared lockfile, and separate tags before merging it.
 - Configure repository protections and authorized release writers for `main`.
 - Provision secret names `RELEASE_PLEASE_TOKEN` and `NPM_TOKEN` only through a separately approved operation. The release-please token must permit repository contents and PR updates and trigger downstream release workflows. No token values are part of this change.
