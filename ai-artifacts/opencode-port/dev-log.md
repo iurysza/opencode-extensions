@@ -253,3 +253,10 @@ Implemented local mode and tool-policy RPC controls, option-aware pool invalidat
 Lead checks passed: clean install, build, 55 script tests, 348 SDK unit tests, 269 Cloud unit tests, package inspections, bridge and RPC endpoint probes, production composition on both endpoints, and all four default-preview combinations. Updated composition fixtures now assert the implemented controls rather than expecting unavailable. Evidence: `.fixtures/lead-verification/nudge-2105-*.log`.
 
 The prior ed754c2 alpha is frozen under `.fixtures/home-alpha-ed754c2`, with independent APFS-cloned dependencies, for stable macOS testing while development continues. No live SDK prompt ran. Helpers, durable resume, model cache and remaining controls are parked in `remaining-work.md`. Next: lnx1 on a new linux-sandbox worktree, without changing the cursor-port test target. The user-provided `ai-artifacts-brief-lnx1.md` stays untouched and uncommitted.
+
+## 2026-11-05 nudge-2233: Linux sandbox committed
+
+- Committed `e19cbef` (fail-closed Linux bubblewrap sandbox) and `9058cde` (Ubuntu CI job, Linux requirements and test steps).
+- macOS verification on the exact tree: build, `check` (734 passed, 1 Linux-only skip), `check:packs` and the isolation probe pass. Independent QA passed 36 endpoint scenarios. Static sandbox review found nothing to fix.
+- Not verified: any Linux execution. Iury runs `linux-test.md` on a Linux host.
+- Refreshed auto release plan posted to the Inbox thread `opencode port`. Release automation stays disabled.
