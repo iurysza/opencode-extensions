@@ -215,3 +215,11 @@ The remaining delivery-write failure is fixed. Validated event evidence survives
 Lead verification used `.fixtures/receipt-commit-check`, an export of HEAD overlaid with only the files in this receipt slice. This avoids including concurrent SDK, Cloud client, control and release changes in its proof. `npm ci --ignore-scripts`, `npm run build`, `npm run check`, `npm run test:host` and `npm run test:req` all passed in that export. Receipt unit tests total 39. Both real hosts, 2.0.0 and 2.2.5, passed all 16 receipt scenarios and every invariant, with no orphan processes. The SDK provider and request regression fixtures passed too. The exact commands and logs are in `.fixtures/lead-verification/receipt-snapshot-*.log`.
 
 G5's listed minimum/latest T1 scenarios pass for the receipt implementation. This does not qualify the unfinished Cloud client or TUI, a real-host compaction case, or any live Cursor behavior. No accepted facts or plan were changed. The remaining functional lanes continue separately.
+
+## 2026-11-05: rel1 automation independently verified, inactive
+
+Added per-package release-please manifest/config, portable verification, optional isolated ARM64 host verification, and an allowlisted npm release workflow. One grouped release PR preserves independent component versions and tags while the node-workspace plugin updates the shared root lock. Publishing validates repository/release ownership, tag/version identity, exact commit and main ancestry before using npm credentials. Legitimate release-please releases targeting their full commit SHA are accepted. Both release mutation jobs require `RELEASE_AUTOMATION_ENABLED == 'true'`; no remote or secrets were configured.
+
+Lead verification used a HEAD export at `.fixtures/release-commit-check` with only this release slice overlaid, excluding concurrent runtime and metadata edits. `npm ci --ignore-scripts`, build, check, all 17 release tests, and both local package inspections passed. Every release JavaScript file passed `node --check`; workflow YAML and each Bash run block parsed. These are local checks, not a GitHub Actions run or a publication. Logs: `.fixtures/lead-verification/release-snapshot-*.log`.
+
+Activation, remote choice and the Cursor terms review remain pending. No push, tag, release, publish, merge or history rewrite occurred.

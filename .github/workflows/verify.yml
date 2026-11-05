@@ -1,0 +1,57 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run check
+      - name: Check release policy and local tarballs
+        run: |
+          node --test scripts/release-*.test.mjs
+          for script in scripts/release-*.mjs; do node --check "$script"; done
+          node scripts/release-check.mjs pack
+
+  # No hosted ARM64 capacity is assumed. See release-plan.md before enabling.
+  isolated-host:
+    if: ${{ vars.HOST_VERIFICATION_ENABLED == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    needs: portable
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+      - name: Require the supported isolated host
+        run: |
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test -x /usr/bin/sandbox-exec
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Acquire pinned integrity-checked CLI tarballs before runtime isolation
+        run: node packages/opencode-cursor-sdk/test/matrix/acquire.mjs 2.0.0 2.2.5
+      - name: Run endpoint host, request and offline SDK tests under their fail-closed sandbox
+        run: |
+          npm run test:host
+          npm run test:req
+          npm run test:t2
