@@ -14,6 +14,7 @@
     "test": "npm test --workspaces --if-present",
     "test:host": "npm run test:host --workspaces --if-present",
     "test:t2": "npm run test:t2 --workspaces --if-present",
+    "test:t2-create": "npm run test:t2-create --workspaces --if-present",
     "test:req": "npm run test:req --workspaces --if-present",
     "check": "node --test scripts/check-layout.test.mjs && node scripts/check-layout.mjs && npm run typecheck && npm test",
     "prepublishOnly": "node -e \"console.error('Refusing to publish the private root workspace.'); process.exit(1)\"",

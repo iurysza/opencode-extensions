@@ -30,6 +30,7 @@
     "test": "vitest run test/unit",
     "test:host": "node test/t1/run-host.mjs",
     "test:t2": "node test/t2/run-offline.mjs",
+    "test:t2-create": "node test/t2/run-create.mjs",
     "test:req": "node test/req/run-requests.mjs",
     "fixtures:acquire": "node test/matrix/acquire.mjs",
     "test:matrix": "node test/matrix/run-matrix.mjs"

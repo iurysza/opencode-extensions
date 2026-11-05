@@ -148,3 +148,24 @@ Validation: `npm ci --ignore-scripts`, `npm run build`, `npm run check` (layout 
 - Latest 2.x now comes from the registry's full `versions` list (`latestStable2x` in `test/matrix/versions.mjs`: highest plain `2.Y.Z`, prereleases and 3.x ignored), not `dist-tags.latest`. A future 3.x release no longer stops the matrix from qualifying the latest 2.x. No stable 2.x still fails acquisition. Exact pins and the tarball integrity check are unchanged.
 - New `test/unit/matrix-acquire.test.mjs` (4 tests, fake npm, temp dirs): numeric highest stable 2.x, no 2.x rejected, fixture dir exists before the first npm call.
 - Validation: `npm run build`, `npm run check` (62 unit tests), `npm run fixtures:acquire` against the registry (latest 2.x = 2.2.5, all 10 binaries reused, integrity-matched). No production code changed.
+
+## 2026-11-05: keyless local `Agent.create` probe (T2, approved slice)
+
+Approval: Iury, Inbox msg_redacted (AGENTS.md exception). Test-only. No production change. SDK stays 1.0.37.
+
+New `test/t2/run-create.mjs` (`npm run test:t2-create`) and fixture `test/t2/create-plugin/server.js`. Same shared isolation as T1 and T2 (`test/isolation.mjs`): `env -i`, isolated HOME/XDG under `.fixtures/t2-create/<v>`, loopback-only sandbox with positive EPERM self-check. The runner checks the fixture HOME is empty, so no `~/.cursor/sdk/auth.json` exists, and `CURSOR_API_KEY` is unset in the host.
+
+Exact call shape, typed as published `AgentOptions` (`dist/esm/options.d.ts`), via public `import("@cursor/sdk").Agent.create`:
+`{ name, tools: [], local: { cwd: <fixture project>, store: <fixture SqliteLocalAgentStore>, settingSources: [] } }`, once without `model` and once with `model: { id: "composer-1" }`. No `apiKey`, no `cloud`, no `mcpServers`, no `customTools`, no `agents`, no `agentId`. Never `send`, `resume` or `prompt`. Each call and each dispose is bounded at 20 s and recorded as resolved, rejected or stalled. The host run is bounded at 90 s; a host timeout or surviving process (ps scan of the fixture path) fails the probe.
+
+Result on 2.0.0 and 2.2.5: both cases **resolve** in 0 to 2 ms with an `agent-…` handle (`send` present, unused). `model` is null without a model, `{ id: "composer-1" }` with one. `Symbol.asyncDispose` resolves. The fixture store holds 2 `idle` agents afterwards. No rejection, no stall, no orphan, no network or sandbox denial in `run.err`, HOME still empty.
+
+What this proves: local `Agent.create` is a store-only operation in 1.0.37. It writes an agent row and an initial run row, and does no auth, model or tool-name validation against a backend. Source reading of the bundle agrees: local `createAgent` only writes to `localStore`. `Agent.create` does resolve a key on the local path too (`CURSOR_API_KEY`, then `homedir()/.cursor/sdk/auth.json`, here the empty fixture HOME; the real `~/.cursor` is also sandbox-denied), but an absent key is not an error until a Cloud call or, presumably, `send`.
+
+What it does not prove: authentication refusal, helper tool denial with `tools: []`, MCP behaviour, stall or abort handling, or any transport semantics. Missing-key refusal would only surface at `send`, which is outside this approval. The model id was not validated.
+
+Gaps: the remaining G1 and G4b runtime checks (auth refusal, tool and MCP denial at run time, stall, abort, real error mapping) are **live-dependent**. They need `send`, so they need a new approval. This probe is stopped there. F-57's transport premise remains an observed-source discrepancy; facts and plan unchanged.
+
+Validation: `npm run build`, `npm run check` (62 unit tests), `npm run test:t2`, `npm run test:t2-create`, `npm run test:host`, `npm run test:req` all pass on 2.0.0 and 2.2.5. Full matrix not rerun (only T2 files added).
+
+Follow-up, same day: the first run above was discovery (it recorded any outcome and passed on a stall). Its observed results are now qualified regression expectations in `run-create.mjs`: both cases must resolve, both public disposals must resolve, and the fixture store must hold exactly 2 `idle` rows. A rejected or stalled create or disposal fails the command. A handle without `Symbol.asyncDispose` or `close` is recorded as dispose `unavailable` and fails, instead of counting as cleaned up. All outcomes are still recorded. No `send`, no wider probe.
