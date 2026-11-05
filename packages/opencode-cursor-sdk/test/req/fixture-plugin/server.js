@@ -12,6 +12,7 @@
 import { appendFileSync } from "node:fs";
 import { createCursorPlugin } from "../../../dist/plugin/create.js";
 import { STAMP_HEADER } from "../../../dist/compat/request-stamp.js";
+import { compactionToken } from "../../../dist/compat/compaction-token.js";
 
 const FORGED = JSON.stringify({ v: 1, kind: "primary", sessionID: "ses_forged", agent: "x", model: { providerID: "cursor", id: "forged" } });
 let log = "/nonexistent/requests.jsonl";
@@ -70,6 +71,20 @@ export default {
       } catch (error) {
         info = { error: String(error?.message ?? error).slice(0, 200) };
       }
+      // G3 prerequisite: public session.context at request time. Records only compaction rows
+      // (id, status) and the derived token, not history bodies.
+      let compaction;
+      try {
+        const messages = await ctx.session.context({ sessionID: event.sessionID });
+        const parsed = compactionToken(messages);
+        compaction = {
+          token: parsed._tag === "ok" ? parsed.value : { error: parsed.error },
+          rows: (Array.isArray(messages) ? messages : []).filter((m) => m?.type === "compaction").map((m) => ({ id: m.id, status: m.status })),
+          messages: Array.isArray(messages) ? messages.length : -1,
+        };
+      } catch (error) {
+        compaction = { error: String(error?.message ?? error).slice(0, 200) };
+      }
       record({
         at: "model.request",
         kind: event.kind,
@@ -78,6 +93,7 @@ export default {
         model: event.model,
         stamp: event.headers[STAMP_HEADER] ?? null,
         hostSessionHeader: event.headers["X-Session-Id"] ?? null,
+        compaction,
         session: { id: info.id, parentID: info.parentID ?? null, fork: info.fork ?? null, model: info.model ?? null, title: info.title ?? null, error: info.error },
       });
     }, { providerID: "cursor" });

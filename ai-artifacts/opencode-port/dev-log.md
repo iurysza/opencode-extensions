@@ -111,3 +111,40 @@ Test-only fix, no production change:
 - Negative regressions run on each real capture and must fail validation: a wrong helper session (counts unchanged), a wrong executing model (counts unchanged), and step-2 primary records moved into step 1 (totals unchanged). I checked the failing checks for each case on both versions: the first two fail the match and the title kind check, and the third fails only `stableSessionAcrossTurns`.
 
 Validation: `npm run build` and `npm run check` (52 unit tests) pass. `npm run test:req` passes on 2.0.0 and 2.2.5. All four kinds matched (primary 4, title 1, compaction 3, generate 1). Fork lineage and the model change still pass, and all three regressions are rejected. `npm run test:host` and `npm run test:t2` still pass on both versions. Gate status is unchanged from the previous entry. No gate is marked passed. The middle versions of the full matrix have not been run.
+
+## 2026-11-05: approvals recorded (no probe run in this entry)
+
+- Iury approved keyless sandboxed `Agent.create` probes (Inbox msg_redacted). Scope: no real credentials, the existing `env -i` isolated HOME/XDG network-blocked sandbox, local runtime only, no Cloud, no prompt `send`. Added as a narrow exception in `AGENTS.md`. The parent will run that T2 slice later. No such probe has run yet.
+- Iury acknowledged the `@cursor/sdk` 1.0.37 audit risk ("its alright", msg_redacted). The pin stays at 1.0.37. No upgrade.
+
+## 2026-11-05: full T1 matrix for provider loading and request identity; G3 compaction token
+
+Acquisition (network allowed, separate from probes): `test/matrix/acquire.mjs` (`npm run fixtures:acquire`). For each version, it runs `npm pack @opencode/cli-darwin-arm64@<v> --ignore-scripts` with the fixture dir as cwd, then checks the tarball's sha512 against the registry `dist.integrity`, extracts it to `.fixtures/inspect/bin-<v>/` and writes `acquired.json` (version, tarball URL, integrity). An existing binary is reused only if its tarball still matches. No install, no lockfile; the script fails if a `package-lock.json` appears under `.fixtures/inspect`. Registry `dist-tags.latest` at run time was 2.2.5, so the deduped matrix is 10 versions: 2.0.0 and 2.2.5 reused, the other 8 fetched, all integrity-matched.
+
+Runtime (loopback only): `test/matrix/run-matrix.mjs` (`npm run test:matrix`) runs the existing `test/t1/run-host.mjs` and `test/req/run-requests.mjs` once per version in separate processes. It reports every version as pass, fail, fail-closed or missing, with failed check names and the evidence dir (`.fixtures/matrix/report.json`). No harness or production change was needed for version-specific CLI shapes in provider loading or request stamping.
+
+Results, 20 of 20 runs pass on 2.0.0, 2.0.3, 2.0.4, 2.0.20, 2.0.21, 2.0.32, 2.1.0, 2.2.0, 2.2.3 and 2.2.5:
+- `test:host` (provider loading, native tool, stored finish): pass on all 10.
+- `test:req`: pass on all 10. The exact per-step source-to-host-hook matching is unchanged. Every version matched primary 4, title 1, compaction 3, generate 1. Fork lineage and model change passed. All negative regressions were rejected.
+- `test:t2`: min and latest only (2.0.0, 2.2.5), both pass. G1 is not claimed as passed.
+
+G3 compaction token (prerequisite only):
+- New pure helper `src/compat/compaction-token.ts`. It reads public `ctx.session.context({ sessionID })` output (`SessionMessage.Info[]`, same type at 2.0.0 and 2.2.5). The token is the id of the newest `type: "compaction"` row with `status: "completed"`, or a `none` sentinel. Running and failed rows never advance it. `metadata.keepID` is not used. Request counts are not used. It is not wired into production yet; there is no session pool.
+- Unit tests (`test/unit/compaction-token.test.ts`, 6 tests): sentinel, newest completed, a newer running or failed row does not advance it, keepID ignored, malformed input rejected, comparison.
+- Real-host fixture: the req fixture's `model.request` hook calls `ctx.session.context` and logs only compaction row ids and statuses plus the derived token. New checks in `test/req/evidence.mjs`: readable on every request; `none` before the first compaction; the token changes exactly once in the main session, and only right after a compaction request; it is unchanged in step 3 (a separate CLI process); the fork gets its own token and never shows the parent's post-compaction token; a running row is never the token.
+- Host shape difference, measured: at 2.0.0 to 2.0.4 and 2.2.0 to 2.2.5, `session.context` during the compaction request shows the in-flight compaction as a `running` row, and the next token equals that row's id. At 2.0.20, 2.0.21, 2.0.32 and 2.1.0, no row is visible until it completes. For those, the check requires the new token to be an id never seen in earlier requests. The `runningCompactionAdvancesToken` regression cannot apply there and is reported as not applicable in the summary, not as a pass. Other new regressions (token reset on restart, change without compaction, revert to a stale id) are rejected on all 10.
+- A failed compaction was not produced on a real host. "Failed does not advance" is unit-tested only.
+
+Gate status:
+- G4a: passed at T1 across the declared matrix (all four kinds identified end to end on all 10 versions; missing or unknown stamps rejected before any source in unit checks).
+- G3: still prerequisite only. Token stability and persistence across processes are shown, but no session pool, no persisted generation, no resume, and no F-22 to F-24 tests. `native` replay was not run.
+- G1, G2 and G4b to G8 remain open.
+
+Validation: `npm ci --ignore-scripts`, `npm run build`, `npm run check` (layout ok, typecheck at 2.0.0 and 2.2.5, 58 unit tests), `npm run test:t2` (2.0.0, 2.2.5), `npm run test:matrix` (20 of 20 pass). Root lockfile only.
+
+## 2026-11-05: matrix acquisition review fix
+
+- `test/matrix/acquire.mjs` failed on a fresh clone: the first `npm view` ran with cwd `.fixtures` before any fixture dir existed (spawn ENOENT). New exported `resolveLatest2x` creates `.fixtures/inspect` first, then queries npm with that dir as cwd.
+- Latest 2.x now comes from the registry's full `versions` list (`latestStable2x` in `test/matrix/versions.mjs`: highest plain `2.Y.Z`, prereleases and 3.x ignored), not `dist-tags.latest`. A future 3.x release no longer stops the matrix from qualifying the latest 2.x. No stable 2.x still fails acquisition. Exact pins and the tarball integrity check are unchanged.
+- New `test/unit/matrix-acquire.test.mjs` (4 tests, fake npm, temp dirs): numeric highest stable 2.x, no 2.x rejected, fixture dir exists before the first npm call.
+- Validation: `npm run build`, `npm run check` (62 unit tests), `npm run fixtures:acquire` against the registry (latest 2.x = 2.2.5, all 10 binaries reused, integrity-matched). No production code changed.

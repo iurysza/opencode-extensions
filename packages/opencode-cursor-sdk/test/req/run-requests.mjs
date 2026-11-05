@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluate, regressions } from "./evidence.mjs";
+import { evaluate, regressions, runningRowVisible } from "./evidence.mjs";
 import { prepareIsolatedBase, realHome, requireBinaryVersion, requireIsolationTools, sandboxed } from "../isolation.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -94,7 +94,12 @@ function runVersion(version) {
     ...evidence,
   };
   // Self-test: each known false positive must fail evidence validation on this real capture.
-  for (const [name, r] of Object.entries(negative)) checks[`regression_${name}_rejected`] = r.failsValidation;
+  // A regression that needs a host shape absent here is reported, never counted as a pass.
+  const notApplicable = [];
+  for (const [name, r] of Object.entries(negative)) {
+    if (r.applicable) checks[`regression_${name}_rejected`] = r.failsValidation;
+    else notApplicable.push(name);
+  }
   const pass = Object.values(checks).every(Boolean);
   const compactionAfter = sources.filter((s) => s.context.sessionID === sessionID);
   const summary = {
@@ -108,6 +113,8 @@ function runVersion(version) {
     forkHookSession: forkHooks[0]?.session,
     // Lineage of compaction: is our summary present in the next primary prompt? (G3 note)
     primaryAfterCompactionSeesSummary: compactionAfter.filter((s) => s.context.kind === "primary").map((s) => s.promptHasSummary),
+    compactionRunningRowVisible: runningRowVisible(steps),
+    regressionsNotApplicable: notApplicable,
     checks,
     pass,
     evidence: base.replace(realHome, "~"),

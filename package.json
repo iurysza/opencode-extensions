@@ -16,7 +16,9 @@
     "test:t2": "npm run test:t2 --workspaces --if-present",
     "test:req": "npm run test:req --workspaces --if-present",
     "check": "node --test scripts/check-layout.test.mjs && node scripts/check-layout.mjs && npm run typecheck && npm test",
-    "prepublishOnly": "node -e \"console.error('Refusing to publish the private root workspace.'); process.exit(1)\""
+    "prepublishOnly": "node -e \"console.error('Refusing to publish the private root workspace.'); process.exit(1)\"",
+    "fixtures:acquire": "npm run fixtures:acquire --workspaces --if-present",
+    "test:matrix": "npm run test:matrix --workspaces --if-present"
   },
   "devDependencies": {
     "@ai-sdk/provider": "3.0.8",
