@@ -1,0 +1,32 @@
+{
+  "name": "@iurysza/opencode-cursor-sdk",
+  "version": "0.0.0",
+  "description": "OpenCode 2.x provider plugin backed by the Cursor SDK.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./dist/server.js",
+    "./provider": "./dist/provider/factory.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@ai-sdk/provider": "3.0.8"
+  },
+  "peerDependencies": {
+    "@opencode/plugin": ">=2.0.0 <3"
+  },
+  "peerDependenciesMeta": {
+    "@opencode/plugin": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.min.json",
+    "test": "vitest run test/unit",
+    "test:host": "node test/t1/run-host.mjs"
+  }
+}

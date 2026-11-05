@@ -1,0 +1,27 @@
+{
+  "name": "@iurysza/opencode-extensions",
+  "version": "0.0.0",
+  "description": "OpenCode extension packages maintained by Iury Souza.",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/opencode-cursor-sdk",
+    "packages/opencode-cursor-cloud"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "test:host": "npm run test:host --workspaces --if-present",
+    "check": "node --test scripts/check-layout.test.mjs && node scripts/check-layout.mjs && npm run typecheck && npm test",
+    "prepublishOnly": "node -e \"console.error('Refusing to publish the private root workspace.'); process.exit(1)\""
+  },
+  "devDependencies": {
+    "@ai-sdk/provider": "3.0.8",
+    "@opencode/plugin": "2.2.5",
+    "opencode-plugin-min": "npm:@opencode/plugin@2.0.0",
+    "@types/node": "22.20.5",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}
