@@ -4,6 +4,7 @@ import { createLocalRuntime, type LocalSdkPort } from "../../src/provider/local-
 import type { CursorTurnEvent, CursorTurnRequest } from "../../src/core/turn-events.js";
 import { translateTurn } from "../../src/core/stream.js";
 import { parseToolOutput } from "../../src/core/bridge.js";
+import { DEFAULT_LOCAL_RUN_OPTIONS, type LocalRunOptions } from "../../src/core/local-settings.js";
 
 const initial = [{ role: "user", content: [{ type: "text", text: "hello" }] }];
 const request = (overrides: Partial<CursorTurnRequest> = {}): CursorTurnRequest => ({
@@ -14,7 +15,7 @@ const collect = async (events: AsyncIterable<CursorTurnEvent>) => { const result
 const cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => { await Promise.all(cleanup.splice(0).map((fn) => fn())); });
 
-function fixture({ bridge = true, error = false } = {}) {
+function fixture({ bridge = true, error = false, runOptions = undefined as LocalRunOptions | undefined } = {}) {
   let lastOptions: SendOptions | undefined;
   let endpoint = "";
   let mcpResult: unknown;
@@ -58,14 +59,14 @@ function fixture({ bridge = true, error = false } = {}) {
     models: async () => [{ id: "fake", displayName: "Fake", parameters: [{ id: "fast", values: [{ value: "true" }] }], variants: [{ displayName: "fast", params: [{ id: "fast", value: "true" }] }] }],
   };
   const loadSdk = vi.fn(async () => sdk);
-  const runtime = createLocalRuntime({ cwd: "/fake", stateRoot: "/fake/state", getApiKey: async () => "fake-key", inspectSession: async () => ({ info, messages: compact }), loadSdk });
+  const runtime = createLocalRuntime({ cwd: "/fake", stateRoot: "/fake/state", getApiKey: async () => "fake-key", inspectSession: async () => ({ info, messages: compact }), loadSdk, ...(runOptions ? { getOptions: async () => runOptions } : {}) });
   cleanup.push(runtime.controls.dispose);
   return { ...runtime, send, created, close, cancel, dispose, loadSdk, get mcpResult() { return mcpResult; }, get endpoint() { return endpoint; }, get options() { return lastOptions; }, setCompact: (value: unknown[]) => { compact = value; }, setInfo: (value: unknown) => { info = value; } };
 }
-function continuation(events: CursorTurnEvent[], output: unknown = { type: "text", value: "" }) {
+function continuation(events: CursorTurnEvent[], output: unknown = { type: "text", value: "" }, base: unknown[] = initial) {
   const call = events.find((e) => e.type === "bridge-tool-call");
   if (!call || call.type !== "bridge-tool-call") throw new Error("No bridge call");
-  return [...initial, { role: "assistant", content: [{ type: "tool-call", toolCallId: call.callId, toolName: call.toolName, input: {} }] }, { role: "tool", content: [{ type: "tool-result", toolCallId: call.callId, toolName: call.toolName, output }] }];
+  return [...base as typeof initial, { role: "assistant", content: [{ type: "tool-call", toolCallId: call.callId, toolName: call.toolName, input: {} }] }, { role: "tool", content: [{ type: "tool-result", toolCallId: call.callId, toolName: call.toolName, output }] }];
 }
 
 describe("local SDK execution and MCP continuation", () => {
@@ -139,6 +140,42 @@ describe("local SDK execution and MCP continuation", () => {
     expect(f.created[3]?.model).toEqual({ id: "fake", params: [{ id: "fast", value: "true" }] });
     expect(f.options?.model).toEqual(f.created[3]?.model);
     expect(f.controls.status("ses_1").generation).toBe(3);
+  });
+  it("reuses one pooled agent across user turns and sends each turn's fresh bridge URL", async () => {
+    const f = fixture();
+    const first = await collect(f.source(request()));
+    const afterFirst = continuation(first);
+    await collect(f.source(request({ prompt: afterFirst })));
+    const turn1Url = f.endpoint;
+    expect(turn1Url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp\//);
+    // Turn 1 finished: its bridge must be closed before the next user turn.
+    await expect(fetch(turn1Url, { method: "POST", body: "{}" }).then((r) => r.status)).rejects.toThrow();
+    const nextTurn = [...afterFirst, { role: "assistant", content: [{ type: "text", text: "done" }] }, { role: "user", content: [{ type: "text", text: "again" }] }];
+    const second = await collect(f.source(request({ prompt: nextTurn })));
+    expect(second.map((e) => e.type)).toContain("bridge-tool-call");
+    const secondEnd = await collect(f.source(request({ prompt: continuation(second, undefined, nextTurn) })));
+    expect(secondEnd.at(-1)).toEqual({ type: "done", reason: "stop" });
+    expect(f.mcpResult).toEqual({ content: [{ type: "text", text: "" }], isError: false });
+    expect(f.created).toHaveLength(1);
+    expect(f.send).toHaveBeenCalledTimes(2);
+    const urls = f.send.mock.calls.map(([, options]) => Object.values(options.mcpServers ?? {}).map((server) => (server as { url: string }).url));
+    expect(urls[0]).toEqual([turn1Url]);
+    expect(urls[1]).toHaveLength(1);
+    expect(urls[1]![0]).not.toBe(turn1Url);
+    expect(urls[1]![0]).toBe(f.endpoint);
+    // Turn 2 sends only the new user message, not turn 1 history.
+    expect(JSON.parse(f.send.mock.calls[1]![0])).toEqual(nextTurn.slice(afterFirst.length));
+  });
+  it("native-only turns reuse the pooled agent and never pass mcpServers", async () => {
+    const f = fixture({ bridge: false, runOptions: { ...DEFAULT_LOCAL_RUN_OPTIONS, tools: "native" } });
+    await collect(f.source(request()));
+    const nextTurn = [...initial, { role: "assistant", content: [{ type: "text", text: "done" }] }, { role: "user", content: [{ type: "text", text: "again" }] }];
+    await collect(f.source(request({ prompt: nextTurn })));
+    expect(f.created).toHaveLength(1);
+    expect(f.created[0]).not.toHaveProperty("mcpServers");
+    expect(f.created[0]).not.toHaveProperty("tools");
+    expect(f.send).toHaveBeenCalledTimes(2);
+    for (const [, options] of f.send.mock.calls) expect(options).not.toHaveProperty("mcpServers");
   });
   it("does not invent unsupported model parameters", async () => {
     const f = fixture({ bridge: false });

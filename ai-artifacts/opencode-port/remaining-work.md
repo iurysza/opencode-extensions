@@ -20,7 +20,7 @@ The current `compactionToken` is a completed-compaction observation, not a durab
 
 ## Cross-turn bridge qualification
 
-Parent review initially suspected a stale bridge URL from pooled-agent creation. Full source inspection corrected that: the existing send path already supplies the fresh `mcpServers` override on every send, and public SDK `SendOptions` supports it. No stale-URL defect has been established. Add a two-user-turn regression and qualify actual SDK per-send behavior before claiming broader multi-turn parity; do not change the design to fix an unproven bug. Same-run continuation cases already pass.
+Parent review initially suspected a stale bridge URL from pooled-agent creation. Full source inspection corrected that: the existing send path already supplies the fresh `mcpServers` override on every send, and public SDK `SendOptions` supports it. No stale-URL defect has been established. Same-run continuation cases already pass. A fake-SDK regression in `test/unit/local-runtime.test.ts` now proves the runtime side: two user turns reuse one pooled agent, turn 1's bridge is closed before turn 2, turn 2's send carries only its fresh bridge URL (never turn 1's), and native-only turns pass no `mcpServers` at create or send. It does not prove the real SDK honours a per-send `mcpServers` override on a pooled agent; that stays unqualified until an approved live probe. Do not change the design to fix an unproven bug.
 
 ## Remaining controls and catalog
 

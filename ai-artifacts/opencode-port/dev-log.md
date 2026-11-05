@@ -253,3 +253,7 @@ Implemented local mode and tool-policy RPC controls, option-aware pool invalidat
 Lead checks passed: clean install, build, 55 script tests, 348 SDK unit tests, 269 Cloud unit tests, package inspections, bridge and RPC endpoint probes, production composition on both endpoints, and all four default-preview combinations. Updated composition fixtures now assert the implemented controls rather than expecting unavailable. Evidence: `.fixtures/lead-verification/nudge-2105-*.log`.
 
 The prior ed754c2 alpha is frozen under `.fixtures/home-alpha-ed754c2`, with independent APFS-cloned dependencies, for stable macOS testing while development continues. No live SDK prompt ran. Helpers, durable resume, model cache and remaining controls are parked in `remaining-work.md`. Next: lnx1 on a new linux-sandbox worktree, without changing the cursor-port test target. The user-provided `ai-artifacts-brief-lnx1.md` stays untouched and uncommitted.
+
+## 2026-11-05: cross-turn bridge regression (fake SDK)
+
+Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime.test.ts`. With a fake pooled agent, two user turns create one agent and send twice. Turn 1's bridge refuses connections after its turn ends. Turn 2's send carries only its own new bridge URL, and the fake reaches that URL. Native-only turns pass no `mcpServers` or `tools` at create or send. No defect found and no production code changed. Real SDK per-send `mcpServers` behaviour on a pooled agent remains unqualified; it needs an approved live probe.
