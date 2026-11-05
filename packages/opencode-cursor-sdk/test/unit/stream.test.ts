@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { translateTurn, type StreamPart } from "../../src/core/stream.js";
 import type { CursorTurnEvent } from "../../src/core/turn-events.js";
 import { createCursor } from "../../src/provider/factory.js";
+import { stampModelRequest } from "../../src/compat/request-stamp.js";
 
 async function collect(events: CursorTurnEvent[] | (() => AsyncIterable<CursorTurnEvent>)): Promise<StreamPart[]> {
   const source = typeof events === "function" ? events() : (async function* () { yield* events; })();
@@ -70,9 +71,15 @@ describe("translateTurn", () => {
 });
 
 describe("create* hedge factory", () => {
+  it("rejects an unstamped request", async () => {
+    await expect(createCursor().languageModel("m").doStream({ prompt: [] } as never)).rejects.toMatchObject({ code: "cursor-unstamped-request" });
+  });
+
   it("fails closed without contacting Cursor", async () => {
     const model = createCursor().languageModel("m");
-    const { stream } = await model.doStream({ prompt: [] } as never);
+    const event = { sessionID: "ses_a", agent: "build", model: { providerID: "cursor", id: "m" }, kind: "primary", headers: {} as Record<string, string> };
+    stampModelRequest(event, "cursor");
+    const { stream } = await model.doStream({ prompt: [], headers: event.headers } as never);
     const reader = stream.getReader();
     const parts: unknown[] = [];
     for (;;) {

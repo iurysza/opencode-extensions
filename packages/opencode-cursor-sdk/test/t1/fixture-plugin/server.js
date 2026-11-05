@@ -12,7 +12,7 @@ const source = async function* () {
   yield { type: "done", reason: "stop" };
 };
 const inner = createCursorPlugin({
-  source,
+  lanes: { coding: source, helper: { _tag: "unavailable" } },
   models: [{ id: "fake", name: "Cursor T1 fake", context: 200000, output: 32000 }],
   onRefusal: (refusal) => console.error(`[cursor-t1] refused: ${refusal.message}`),
 });

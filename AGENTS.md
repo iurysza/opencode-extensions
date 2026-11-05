@@ -18,4 +18,4 @@ OpenCode 2.x ports of Iury's Cursor extensions.
 ## Closed loop
 
 Before committing: `npm ci --ignore-scripts`, `npm run build`, `npm run check`.
-Real-host T1 (needs pinned binaries in `.fixtures/inspect/bin-<version>/`): `npm run test:host`.
+Real-host T1 (needs pinned binaries in `.fixtures/inspect/bin-<version>/`): `npm run test:host`. Real-host request stamping (G4a, G3 prerequisites): `npm run test:req`.

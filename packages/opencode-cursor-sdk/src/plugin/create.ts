@@ -1,13 +1,17 @@
 import { parseHost, type HostRefusal } from "../compat/host.js";
 import { registerProvider, type ProviderSpec } from "../compat/provider-registration.js";
-import type { CursorTurnSource } from "../core/turn-events.js";
+import { stampModelRequest } from "../compat/request-stamp.js";
+import type { TurnLanes } from "../core/lanes.js";
 import { createLanguageModel, createSdk, PROVIDER_ID } from "../provider/language-model.js";
 
 export const PLUGIN_ID = "iurysza.cursor-sdk";
 
 export interface CursorPluginOptions {
-  /** Produces Cursor turn events. Production passes the real SDK adapter (M1); tests pass a scripted fake. */
-  readonly source: CursorTurnSource;
+  /**
+   * Turn sources by request purpose. `coding` runs `primary` only. Production passes no helper
+   * lane until G4b passes, so title, compaction and generate refuse to start (F-16).
+   */
+  readonly lanes: TurnLanes;
   /** Models to register. The real model list arrives with the SDK adapter (M1). */
   readonly models: ProviderSpec["models"];
   /** Receives the fixed refusal message when the host is unsupported. */
@@ -31,6 +35,10 @@ export function createCursorPlugin(options: CursorPluginOptions) {
         return;
       }
       if (host.value.workspaceID !== undefined) return;
+      // Stamp purpose and session identity on our provider's requests only (F-14).
+      await host.value.sessionHook("model.request", (event) => stampModelRequest(event, PROVIDER_ID), {
+        providerID: PROVIDER_ID,
+      });
       await registerProvider(host.value.registration, {
         id: PROVIDER_ID,
         name: "Cursor",
@@ -41,7 +49,7 @@ export function createCursorPlugin(options: CursorPluginOptions) {
       await host.value.aisdkHook(
         "sdk",
         (event) => {
-          if (event.sdk === undefined) event.sdk = createSdk(options.source, "plugin-hook");
+          if (event.sdk === undefined) event.sdk = createSdk(options.lanes, "plugin-hook");
         },
         { providerID: PROVIDER_ID },
       );
@@ -52,7 +60,7 @@ export function createCursorPlugin(options: CursorPluginOptions) {
           const model = event.model as { modelID?: string; id: string };
           const sdk = event.sdk as { origin?: unknown } | undefined;
           const origin = sdk?.origin === "plugin-hook" ? "plugin-hook" : "package-factory";
-          event.language = createLanguageModel(model.modelID ?? model.id, options.source, origin);
+          event.language = createLanguageModel(model.modelID ?? model.id, options.lanes, origin);
         },
         { providerID: PROVIDER_ID },
       );

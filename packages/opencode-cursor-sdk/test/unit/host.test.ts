@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parseHost, RefusalMessage } from "../../src/compat/host.js";
 import { registerProvider } from "../../src/compat/provider-registration.js";
 import { createCursorPlugin } from "../../src/plugin/create.js";
+import { codingOnly } from "../../src/provider/language-model.js";
 
 const noop = async () => ({ dispose: async () => {} });
 
@@ -30,14 +31,19 @@ function catalogEditor() {
   };
 }
 
-function context(overrides: { version?: string; provider?: boolean; catalog?: boolean; synthetic?: boolean; rpc?: boolean; aisdk?: boolean; workspaceID?: string } = {}) {
+function context(overrides: { version?: string; provider?: boolean; catalog?: boolean; synthetic?: boolean; sessionHook?: boolean; rpc?: boolean; aisdk?: boolean; workspaceID?: string } = {}) {
   const catalog = catalogEditor();
   const added: unknown[] = [];
   const hooks: { name: string; providerID?: string }[] = [];
   const ctx: Record<string, unknown> = {
     app: { name: "opencode", version: overrides.version ?? "2.2.5", channel: "latest" },
     location: { directory: "/tmp", workspaceID: overrides.workspaceID },
-    session: overrides.synthetic === false ? {} : { synthetic: noop },
+    session: {
+      ...(overrides.synthetic === false ? {} : { synthetic: noop }),
+      ...(overrides.sessionHook === false
+        ? {}
+        : { hook: vi.fn(async (name: string, _cb: unknown, opts?: { providerID?: string }) => (hooks.push({ name: `session.${name}`, providerID: opts?.providerID }), { dispose: async () => {} })) }),
+    },
     // Real 2.x hosts expose rpc as a callable client factory with `register` attached (found in T1).
     rpc: overrides.rpc === false ? {} : Object.assign(() => ({}), { register: noop }),
   };
@@ -62,6 +68,7 @@ describe("host capability parsing (fail closed)", () => {
     [{ provider: false, catalog: false }, "missing-registration"],
     [{ provider: true, aisdk: false }, "missing-aisdk"],
     [{ provider: true, synthetic: false }, "missing-session-synthetic"],
+    [{ provider: true, sessionHook: false }, "missing-session-hook"],
     [{ provider: true, rpc: false }, "missing-rpc"],
   ] as const)("refuses missing capability %o", (overrides, reason) => {
     const result = parseHost(context(overrides).ctx);
@@ -77,14 +84,14 @@ describe("host capability parsing (fail closed)", () => {
   it("refused plugin registers nothing and reports the fixed message", async () => {
     const { ctx, added } = context({ version: "1.18.33", provider: true });
     const onRefusal = vi.fn();
-    await createCursorPlugin({ source: () => [][Symbol.iterator]() as never, models: [], onRefusal }).setup(ctx);
+    await createCursorPlugin({ lanes: codingOnly(() => [][Symbol.iterator]() as never), models: [], onRefusal }).setup(ctx);
     expect(onRefusal).toHaveBeenCalledWith({ reason: "unsupported-version", message: RefusalMessage["unsupported-version"] });
     expect(added).toEqual([]);
   });
 
   it("registers nothing in a remote workspace (F-60)", async () => {
     const { ctx, added, hooks } = context({ provider: true, workspaceID: "wrk_1" });
-    await createCursorPlugin({ source: () => [][Symbol.iterator]() as never, models: [{ id: "m", name: "M", context: 1, output: 1 }] }).setup(ctx);
+    await createCursorPlugin({ lanes: codingOnly(() => [][Symbol.iterator]() as never), models: [{ id: "m", name: "M", context: 1, output: 1 }] }).setup(ctx);
     expect(added).toEqual([]);
     expect(hooks).toEqual([]);
   });
@@ -119,8 +126,9 @@ describe("provider registration across the 2.0.4 boundary", () => {
 
   it("plugin hooks only its own provider", async () => {
     const { ctx, hooks } = context({ provider: true });
-    await createCursorPlugin({ source: () => [][Symbol.iterator]() as never, models: [] }).setup(ctx);
+    await createCursorPlugin({ lanes: codingOnly(() => [][Symbol.iterator]() as never), models: [] }).setup(ctx);
     expect(hooks).toEqual([
+      { name: "session.model.request", providerID: "cursor" },
       { name: "sdk", providerID: "cursor" },
       { name: "language", providerID: "cursor" },
     ]);

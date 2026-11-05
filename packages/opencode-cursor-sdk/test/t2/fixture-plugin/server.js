@@ -82,9 +82,12 @@ async function probe(stateRoot, workspaceRef) {
 }
 
 const inner = createCursorPlugin({
-  source: async function* () {
-    yield { type: "text", text: "T2 probe done." };
-    yield { type: "done", reason: "stop" };
+  lanes: {
+    coding: async function* () {
+      yield { type: "text", text: "T2 probe done." };
+      yield { type: "done", reason: "stop" };
+    },
+    helper: { _tag: "unavailable" },
   },
   models: [{ id: "fake", name: "Cursor T2 fake", context: 200000, output: 32000 }],
   onRefusal: (refusal) => console.error(`[cursor-t2] refused: ${refusal.message}`),

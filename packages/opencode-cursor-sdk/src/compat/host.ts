@@ -8,6 +8,7 @@ export const RefusalMessage = {
     "Cursor SDK plugin disabled: this OpenCode host has neither provider nor catalog registration.",
   "missing-aisdk": "Cursor SDK plugin disabled: this OpenCode host has no aisdk hook.",
   "missing-session-synthetic": "Cursor SDK plugin disabled: this OpenCode host has no session.synthetic.",
+  "missing-session-hook": "Cursor SDK plugin disabled: this OpenCode host has no session.hook.",
   "missing-rpc": "Cursor SDK plugin disabled: this OpenCode host has no rpc.register.",
 } as const;
 
@@ -29,10 +30,18 @@ export type AisdkHook = (
   options?: { readonly providerID?: string },
 ) => Promise<unknown>;
 
+/** Public `session.hook`, used only for `model.request` (F-14). */
+export type SessionHook = (
+  name: "model.request",
+  callback: (event: Record<string, unknown>) => void | Promise<void>,
+  options?: { readonly providerID?: string },
+) => Promise<unknown>;
+
 export interface HostCapabilities {
   readonly version: string;
   readonly registration: RegistrationApi;
   readonly aisdkHook: AisdkHook;
+  readonly sessionHook: SessionHook;
   /** Set when OpenCode runs in a remote workspace; the Cursor provider refuses then (F-60). */
   readonly workspaceID: string | undefined;
 }
@@ -71,6 +80,8 @@ export function parseHost(context: unknown): Result<HostCapabilities, HostRefusa
   const hook = prop(prop(context, "aisdk"), "hook");
   if (!fn(hook)) return refuse("missing-aisdk");
   if (!fn(prop(prop(context, "session"), "synthetic"))) return refuse("missing-session-synthetic");
+  const sessionHook = prop(prop(context, "session"), "hook");
+  if (!fn(sessionHook)) return refuse("missing-session-hook");
   if (!fn(prop(prop(context, "rpc"), "register"))) return refuse("missing-rpc");
 
   const workspaceID = prop(prop(context, "location"), "workspaceID");
@@ -78,6 +89,7 @@ export function parseHost(context: unknown): Result<HostCapabilities, HostRefusa
     version,
     registration,
     aisdkHook: hook as AisdkHook,
+    sessionHook: sessionHook as SessionHook,
     workspaceID: typeof workspaceID === "string" && workspaceID.length > 0 ? workspaceID : undefined,
   });
 }

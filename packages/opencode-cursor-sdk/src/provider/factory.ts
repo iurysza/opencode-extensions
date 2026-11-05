@@ -1,5 +1,5 @@
 import { unavailableTurnSource } from "../core/turn-events.js";
-import { createSdk, type CursorSdk } from "./language-model.js";
+import { codingOnly, createSdk, type CursorSdk } from "./language-model.js";
 
 /**
  * G2 hedge. OpenCode's internal `DynamicProviderPlugin` fills `evt.sdk` from the
@@ -8,5 +8,5 @@ import { createSdk, type CursorSdk } from "./language-model.js";
  * the model it returns.
  */
 export function createCursor(_options?: Record<string, unknown>): CursorSdk {
-  return createSdk(unavailableTurnSource, "package-factory");
+  return createSdk(codingOnly(unavailableTurnSource), "package-factory");
 }

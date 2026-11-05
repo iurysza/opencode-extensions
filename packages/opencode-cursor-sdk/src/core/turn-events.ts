@@ -3,6 +3,8 @@
  * will produce these; this slice only feeds them from scripted fakes in tests.
  * Imports nothing from OpenCode, Pi or the Cursor SDK.
  */
+import type { RequestContext } from "./request-context.js";
+
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export type CursorTurnEvent =
@@ -20,6 +22,8 @@ export type CursorTurnEvent =
 
 export interface CursorTurnRequest {
   readonly modelId: string;
+  /** Purpose and session identity from our private stamp, parsed before the source runs (F-14, F-17). */
+  readonly context: RequestContext;
   /** The AI SDK prompt as received by the provider. Opaque to this layer. */
   readonly prompt: unknown;
   readonly abortSignal?: AbortSignal;
