@@ -1,3 +1,7 @@
+import type { Plugin } from "@opencode/plugin";
+import type { LocalPluginOptions } from "./local.js";
+import type { RuntimeOptions } from "./runtime.js";
+import { FALLBACK_SPECS, type LocalControls } from "../provider/local-runtime.js";
 import { parseHost, type HostRefusal } from "../compat/host.js";
 import { registerProvider, type ProviderSpec } from "../compat/provider-registration.js";
 import { stampModelRequest } from "../compat/request-stamp.js";
@@ -11,9 +15,12 @@ export interface CursorPluginOptions {
    * Turn sources by request purpose. `coding` runs `primary` only. Production passes no helper
    * lane until G4b passes, so title, compaction and generate refuse to start (F-16).
    */
-  readonly lanes: TurnLanes;
+  readonly lanes?: TurnLanes;
+  readonly local?: LocalPluginOptions;
+  readonly foreground?: RuntimeOptions["foreground"];
+  readonly onLocalControls?: (controls: LocalControls) => void;
   /** Models to register. The real model list arrives with the SDK adapter (M1). */
-  readonly models: ProviderSpec["models"];
+  readonly models?: ProviderSpec["models"];
   /** Receives the fixed refusal message when the host is unsupported. */
   readonly onRefusal?: (refusal: HostRefusal) => void;
 }
@@ -25,16 +32,19 @@ export const factoryPackage = (): string => `aisdk:${new URL("../provider/factor
  * Builds the `@opencode/plugin` `define({ id, setup })` definition. Structural on purpose:
  * `define` is an identity function, and this package must not import host code at load.
  */
-export function createCursorPlugin(options: CursorPluginOptions) {
+export function createCursorPlugin(options: CursorPluginOptions = {}) {
   return {
     id: PLUGIN_ID,
-    async setup(context: unknown): Promise<void> {
+    async setup(context: unknown): Promise<void | (() => Promise<void>)> {
       const host = parseHost(context);
       if (host._tag === "err") {
         (options.onRefusal ?? ((refusal) => console.warn(refusal.message)))(host.error);
         return;
       }
       if (host.value.workspaceID !== undefined) return;
+      const local = options.lanes ? undefined : await (await import("./runtime.js")).composeRuntime(context as Plugin.Context, { local: options.local, foreground: options.foreground });
+      const lanes = options.lanes ?? local!.lanes;
+      if (local) options.onLocalControls?.(local.controls);
       // Stamp purpose and session identity on our provider's requests only (F-14).
       await host.value.sessionHook("model.request", (event) => stampModelRequest(event, PROVIDER_ID), {
         providerID: PROVIDER_ID,
@@ -43,13 +53,13 @@ export function createCursorPlugin(options: CursorPluginOptions) {
         id: PROVIDER_ID,
         name: "Cursor",
         package: factoryPackage(),
-        models: options.models,
+        models: options.models ?? FALLBACK_SPECS,
       });
       // If no earlier hook supplied an SDK (internal dynamic loader absent), supply ours.
       await host.value.aisdkHook(
         "sdk",
         (event) => {
-          if (event.sdk === undefined) event.sdk = createSdk(options.lanes, "plugin-hook");
+          if (event.sdk === undefined) event.sdk = createSdk(lanes, "plugin-hook");
         },
         { providerID: PROVIDER_ID },
       );
@@ -60,10 +70,11 @@ export function createCursorPlugin(options: CursorPluginOptions) {
           const model = event.model as { modelID?: string; id: string };
           const sdk = event.sdk as { origin?: unknown } | undefined;
           const origin = sdk?.origin === "plugin-hook" ? "plugin-hook" : "package-factory";
-          event.language = createLanguageModel(model.modelID ?? model.id, options.lanes, origin);
+          event.language = createLanguageModel(model.modelID ?? model.id, lanes, origin);
         },
         { providerID: PROVIDER_ID },
       );
+      return local?.dispose;
     },
   };
 }

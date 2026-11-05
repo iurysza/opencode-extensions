@@ -25,7 +25,12 @@ export function checkLayout(root) {
     }
     const pkg = read(`packages/${dir}/package.json`);
     if (pkg.name !== name) errors.push(`packages/${dir} must be named ${name}`);
-    if (JSON.stringify(pkg).includes("@cursor/sdk") && dir === "opencode-cursor-cloud") errors.push("cloud package must not depend on @cursor/sdk yet");
+    if (pkg.dependencies?.["@cursor/sdk"] !== "1.0.37") errors.push(`packages/${dir} must declare @cursor/sdk 1.0.37 as a runtime dependency`);
+    for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+      for (const other of Object.values(expected).filter((entry) => entry !== name)) {
+        if (Object.hasOwn(pkg[field] ?? {}, other)) errors.push(`packages/${dir} must not depend on ${other}`);
+      }
+    }
   }
   return errors;
 }

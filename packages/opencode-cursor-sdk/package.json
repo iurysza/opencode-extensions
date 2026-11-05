@@ -7,20 +7,36 @@
   "type": "module",
   "exports": {
     "./server": "./dist/server.js",
-    "./provider": "./dist/provider/factory.js"
+    "./provider": "./dist/provider/factory.js",
+    "./tui": "./dist/tui.js",
+    ".": "./dist/server.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "dependencies": {
     "@ai-sdk/provider": "3.0.8",
     "@cursor/sdk": "1.0.37"
   },
   "peerDependencies": {
-    "@opencode/plugin": ">=2.0.0 <3"
+    "@opencode/plugin": ">=2.0.0 <3",
+    "@opentui/solid": ">=0.5.10 <0.9",
+    "@opentui/core": ">=0.5.10 <0.9",
+    "solid-js": ">=1.9.0 <2"
   },
   "peerDependenciesMeta": {
     "@opencode/plugin": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "@opentui/core": {
+      "optional": true
+    },
+    "solid-js": {
       "optional": true
     }
   },
@@ -33,6 +49,15 @@
     "test:t2-create": "node test/t2/run-create.mjs",
     "test:req": "node test/req/run-requests.mjs",
     "fixtures:acquire": "node test/matrix/acquire.mjs",
-    "test:matrix": "node test/matrix/run-matrix.mjs"
+    "test:matrix": "node test/matrix/run-matrix.mjs",
+    "test:bridge": "node test/bridge/run-host.mjs",
+    "test:control": "node test/control/run-host.mjs",
+    "test:tui": "node test/control/run-tui.mjs",
+    "test:composition": "node test/integration/run-composition.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
   }
 }

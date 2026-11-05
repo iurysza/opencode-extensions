@@ -7,7 +7,10 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const pkg = resolve(import.meta.dirname, "../..");
-const FORBIDDEN = /^(@cursor\/sdk|@iurysza\/pi-|pi-cursor|@earendil-works\/|@opencode\/(?!plugin$))/;
+// Direct project imports stay fenced. Public plugin transitives are not project imports.
+const DIRECT_FORBIDDEN = /^(@cursor\/sdk|@iurysza\/pi-|pi-cursor|@earendil-works\/|@opencode\/(?!plugin$))/;
+
+const RUNTIME_FORBIDDEN = /^(@cursor\/sdk|@iurysza\/pi-|pi-cursor|@earendil-works\/|@opentui\/|solid-js(?:\/|$)|@opencode\/plugin\/(?:tui|gui|runtime)(?:\/|$))/;
 
 const childScript = `
 const { registerHooks, syncBuiltinESMExports } = await import("node:module");
@@ -38,14 +41,21 @@ describe("package load boundary", () => {
     expect(run.status).toBe(0);
     const seen: string[] = JSON.parse(run.stdout);
     expect(seen.length).toBeGreaterThan(0);
-    expect(seen.filter((s) => FORBIDDEN.test(s))).toEqual([]);
+    expect(seen.filter((s) => RUNTIME_FORBIDDEN.test(s))).toEqual([]);
   });
 
   it("negative control: the hook records an SDK import when one happens", () => {
     // Resolve-only via import.meta.resolve: records the specifier without loading SDK code.
     const run = spawnSync(process.execPath, ["--input-type=module", "-e", `${childScript.split("for (const entry")[0]}import.meta.resolve("@cursor/sdk"); process.stdout.write(JSON.stringify(seen));`], { cwd: pkg, encoding: "utf8" });
     expect(run.status).toBe(0);
-    expect((JSON.parse(run.stdout) as string[]).filter((s) => FORBIDDEN.test(s))).toEqual(["@cursor/sdk"]);
+    expect((JSON.parse(run.stdout) as string[]).filter((s) => RUNTIME_FORBIDDEN.test(s))).toEqual(["@cursor/sdk"]);
+  });
+
+  it("keeps project-private imports fenced without banning public plugin transitives", () => {
+    for (const spec of ["@opencode/schema/agent", "@opencode/core", "@opencode/plugin/runtime", "@opencode/plugin/private"]) expect(DIRECT_FORBIDDEN.test(spec)).toBe(true);
+    expect(DIRECT_FORBIDDEN.test("@opencode/plugin")).toBe(false);
+    expect(RUNTIME_FORBIDDEN.test("@opencode/schema/agent")).toBe(false);
+    for (const spec of ["@cursor/sdk", "@cursor/sdk/sqlite", "@opentui/core", "@opencode/plugin/tui"]) expect(RUNTIME_FORBIDDEN.test(spec)).toBe(true);
   });
 
   it("network deny hooks fire", () => {
@@ -60,7 +70,7 @@ describe("package load boundary", () => {
       // lazy import; the fresh-process test above verifies the actual startup graph.
       return [...source.matchAll(/import\s+(?!type\b)[^;]*?from\s*["']([^"']+)["']/g)]
         .map((m) => m[1] ?? "")
-        .filter((spec) => FORBIDDEN.test(spec) && !(file.includes("/src/tui/") && spec === "@opencode/plugin/tui"))
+        .filter((spec) => DIRECT_FORBIDDEN.test(spec) && !(file.includes("/src/tui/") && spec === "@opencode/plugin/tui"))
         .map((spec) => `${file}: ${spec}`);
     });
     expect(offenders).toEqual([]);
