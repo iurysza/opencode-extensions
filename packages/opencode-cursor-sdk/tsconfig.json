@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": { "noEmit": true },
-  "include": ["src", "test/types/latest.ts", "test/unit"]
+  "include": ["src", "test/types/latest.ts", "test/types/sdk-agent-options.ts", "test/unit"]
 }

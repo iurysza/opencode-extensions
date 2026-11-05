@@ -45,3 +45,26 @@ Not done: G1, G4b, G5, G6, G8, the full version matrix, the real Cursor adapter,
   - `~/.config`: the runner still checks for EPERM when the directory exists.
   - The credential-directory bans, `env -i`, the isolated HOME and XDG directories and the loopback-only network rules are unchanged.
 - Validation: `npm run build` passed. `npm run check` passed: 2 layout tests, layout ok, typecheck ok and 23 unit tests. `npm run test:host` passed on 2.0.0 and 2.2.5, with exit code 0.
+
+## 2026-11-05: T2 offline real-SDK probe (partial G1, G4b typings)
+
+- `@cursor/sdk` 1.0.37 is now an exact, normal dependency of `@iurysza/opencode-cursor-sdk`. It was installed with `npm install --ignore-scripts`. There is still one root lockfile and no child lockfile. The SDK pulled `@cursor/sdk-darwin-arm64` 1.0.37 (optional, platform binaries) and `@connectrpc/connect` and `connect-web` 1.7.0.
+- Production entries still import no SDK. `test/unit/load-boundary.test.ts` loads `dist/server.js` and `dist/provider/factory.js` in a fresh Node process. A resolve hook records every specifier, and fetch, `net` and `http(s)` throw. It finds no `@cursor/sdk`, Pi or OpenCode-internal import and no network call. Negative controls prove that the hook catches an SDK specifier and the deny hooks fire. A source scan of `src/` checks the same import rule.
+- The isolation code moved to `test/isolation.mjs`, so T1 and T2 use one copy. T1 behaviour is unchanged.
+- `npm run test:t2` (`test/t2/run-offline.mjs`) loads a test-only plugin (`test/t2/fixture-plugin`) in the pinned `opencode` 2.0.0 and 2.2.5 binaries. It uses the same `env -i`, isolated HOME and XDG, loopback-only sandbox and positive EPERM self-check. It makes no `Agent.create`, resume or send call, uses no key and opens no real store. Evidence is in `.fixtures/t2/<v>/{probe.json,summary.json,run.out,run.err}`.
+- Measured on both hosts. The host Bun is 1.4.2 on 2.0.0 (rev 744846f8) and 1.4.4 on 2.2.5 (rev 38afee6c). This is the CLI's own runtime, not a system Bun.
+  - `import.meta.resolve` selects the `bun` export condition: `@cursor/sdk/dist/bundled/index.js` and `dist/bundled/sqlite.js`, not `dist/esm`.
+  - The main import succeeds, and all required exports exist (76 in total).
+  - `SqliteLocalAgentStore.open({ workspaceRef, stateRoot })` in the fixture works. The probe writes an agent row, a checkpoint blob and a run event. It then disposes the store, reopens it and reads all three back. The bundled driver is `bun:sqlite`. `index.db` and a per-agent `store.db` were created inside the fixture.
+  - Harness mistake, fixed: checkpoint `blobId` must be hex, because blobs are content-addressed. The first probe used `"t2-blob"` and got `Invalid hex string length`. It now uses the sha256 hex.
+  - Manufactured offline errors: `convertConnectError` maps Unauthenticated to `AuthenticationError`, Unavailable and DeadlineExceeded to `NetworkError`, and ResourceExhausted to `RateLimitError`. All are `CursorSdkError` instances. This shows how the classes are wired. It is not evidence of real transport errors.
+- Transport, from reading the code. Not proven at runtime. The bundled build uses `@connectrpc/connect-web` only when `globalThis.Deno` is defined. Otherwise it uses its own Node-HTTP/2 "safe" transport. Under the host Bun, `Deno` is undefined. So the plan's "Bun loads `connect-web`" premise looks wrong for 1.0.37: Bun takes the `bundled` entry but the Node-style transport. This affects how F-57 classification must be checked. It needs a real RPC to confirm.
+- G4b typings: `test/types/sdk-agent-options.ts` compiles against the installed declarations. `{ model, tools: [], local: { cwd } } satisfies AgentOptions`. A non-list `tools` value is rejected. This is type evidence only, not proof that native tools are denied.
+- Validation: `npm ci --ignore-scripts`, `npm run build` and `npm run check` all pass (layout ok, typecheck ok, 27 unit tests). `npm run test:host` passes on 2.0.0 and 2.2.5. `npm run test:t2` passes on 2.0.0 and 2.2.5.
+
+Still open:
+- G1: real auth, network, abort and stall error classification under Bun (F-57).
+- G1: the local MCP bridge call held past 60 s. Every public path found needs an agent run, so it needs `Agent.create` with approval.
+- G1: remote timeouts (T3).
+- G4b: runtime text-only proof of the helper lane (T2 with an agent, then T3).
+- G1 and G4b are not passed.

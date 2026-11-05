@@ -13,7 +13,8 @@
     "dist"
   ],
   "dependencies": {
-    "@ai-sdk/provider": "3.0.8"
+    "@ai-sdk/provider": "3.0.8",
+    "@cursor/sdk": "1.0.37"
   },
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.0 <3"
@@ -27,6 +28,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.min.json",
     "test": "vitest run test/unit",
-    "test:host": "node test/t1/run-host.mjs"
+    "test:host": "node test/t1/run-host.mjs",
+    "test:t2": "node test/t2/run-offline.mjs"
   }
 }
