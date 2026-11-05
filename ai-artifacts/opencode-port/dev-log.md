@@ -169,3 +169,49 @@ Gaps: the remaining G1 and G4b runtime checks (auth refusal, tool and MCP denial
 Validation: `npm run build`, `npm run check` (62 unit tests), `npm run test:t2`, `npm run test:t2-create`, `npm run test:host`, `npm run test:req` all pass on 2.0.0 and 2.2.5. Full matrix not rerun (only T2 files added).
 
 Follow-up, same day: the first run above was discovery (it recorded any outcome and passed on a stall). Its observed results are now qualified regression expectations in `run-create.mjs`: both cases must resolve, both public disposals must resolve, and the fixture store must hold exactly 2 `idle` rows. A rejected or stalled create or disposal fails the command. A handle without `Symbol.asyncDispose` or `close` is recorded as dispose `unavailable` and fails, instead of counting as cleaned up. All outcomes are still recorded. No `send`, no wider probe.
+
+## 2026-11-05: G5 completion receipts (core, public adapter, real-host T1)
+
+Approved amendment: Inbox msg_redacted (deduplicated notifications, conservative recovery, answer status always `unknown`). No Cursor SDK or Cloud call. Cloud package has no `@cursor/sdk` dependency; lockfile unchanged.
+
+Code in `packages/opencode-cursor-cloud`:
+- `src/core/` (host-neutral, no Pi, OpenCode or OpenTUI imports): `message-id.ts` (copy of host `Identifier.ascending`, MIT attribution), `receipt.ts` (states `observed`, `dispatching`, `admitted`, `delivered`, `held`; pure transitions; SHA-256 text hash; stored-record parser rejects changed text, bad IDs, unknown states and misfiled keys; `delivered` never regresses), `keyed-queue.ts` (one queue per session), `receipts.ts` (shell: intent saved before every host call; recovery dispatches only `observed`; `dispatching` without host evidence becomes `held: uncertain-attempt`, never replayed).
+- `src/plugin/completion.ts`: adapter over public `ctx.storage`, `ctx.session.get/context/synthetic` and `ctx.event.subscribe` (client-side filter for `session.inbox.delivered`).
+- Type tests against 2.0.0 (`tsconfig.min.json`) and 2.2.5.
+
+Real-host T1: `npm run test:host -w packages/opencode-cursor-cloud` (`test/t1/run-receipts.mjs`). Pinned `serve` binaries under the shared isolation (`env -i`, isolated HOME/XDG, loopback sandbox). Added `sandboxedSpawn` to `opencode-cursor-sdk/test/isolation.mjs` for a long-lived server in its own process group. Fixture `test/t1/receipts-plugin/server.js` uses the SDK fake provider and a test-only RPC to observe completions, arm SIGKILL fault points, stage IDs and block a turn. Crash cases kill the host and restart it on the same data dir. Waits are bounded polls on log or host evidence.
+
+Result on 2.0.0 and 2.2.5: all 16 scenarios pass (basic; busy final step plus intervening prompt; two sessions; two completions in one session; duplicate and late events; payload mismatch on promoted and pending rows; cross-session ID conflict; `resume:false`; reverted session; deleted session; crash before attempt, after intent, after host admission, after wake, after promotion; late duplicate after restart). Global invariants hold: at most one host call per receipt, at most one stored synthetic per ID, every answer `unknown`, no corrupt receipts, no orphan process.
+
+Bug found by the real host and fixed: a cached delivered event for a reused ID marked an unattempted receipt `delivered` without any host call. The cache is now keyed by session and inbox ID, cleared when our intent is written, and ignored for `observed` receipts. Unit regression test added (21 unit tests).
+
+Observed host facts: a replayed ID with new text returns the existing row unchanged with no error; a cross-session reuse raises `SyntheticConflictError`. Crash right after host admission leaves the receipt `held: uncertain-attempt` with no row in history; the host did not keep the row (it died before commit) and we did not replay it. After a crash with a pending woken item, restart did not rerun the model for that session in these runs; host recovery is at-least-once by design, so this is disclosed, not guaranteed.
+
+Gaps: compaction hiding a promoted row is unit-tested only (fake host), not on a real host. No real Cloud client, tools or TUI. Held receipts are surfaced through diagnostics and `list`, with no user-facing UI yet. Full 10-version matrix not run for receipts.
+
+Validation: `npm ci --ignore-scripts`, `npm run build`, `npm run check` (exit 0), Cloud `test:host` on 2.0.0 and 2.2.5, SDK `test:host`, `test:req`, `test:t2` all pass.
+
+## 2026-11-05: G5 review fixes and correction (not passed until parent review)
+
+Correction to the entry above: "the host did not keep the row (it died before commit)" was an overclaim. That runner checked only public `context` rows, not the inbox. The scenario now also reads `GET /api/session/:id/inbox`. On 2.0.0 and 2.2.5 the fixture logged `synthetic-return` before the SIGKILL. After restart, the ID was **pending**: one inbox item, not promoted, no context row. The receipt stays `held: uncertain-attempt` and is not replayed. This shows only what was observed after restart; it does not prove the host's write durability.
+
+Reviewer blockers fixed in `packages/opencode-cursor-cloud/src/core`:
+1. `recover` and `reconcileSession` used scan snapshots outside the session queue. Now the scan only finds keys. Each receipt is re-read and validated inside its queue before any transition. Corrupt records go into `corrupt`. Storage read or write failures go into a new `RecoveryReport.failed` (recover), or throw (reconcileSession). Nothing is dropped silently.
+2. `delivered()` could mark a durable `observed` receipt as delivered with 0 host calls. `markDelivered` now ignores `event` evidence unless a validated admission exists. `context` evidence, from a matching history row whose text was checked, is still accepted. `delivered()` also skips `observed` receipts and events already consumed.
+3. `dispatch` applied a racing delivered event before validating the host response. The response's identity, type and text are now checked first. The racing event is consumed, then applied only when the result is `admitted`. Invalid, mismatching or failed responses stay held, even with a concurrent event.
+
+Tests: `test/unit/receipts-races.test.ts`, 11 tests with barriers and no sleeps. On the old code 9 fail and 2 pass (the 2 positive controls). On the fixed code all 32 unit tests pass. Evidence is in `.fixtures/g5-review-fixes/`: `old-code.txt`, `fixed-code.txt`, `old/`, `new/`.
+
+Runner (`test/t1/run-receipts.mjs`): each version run now ends in a `finally` that kills the server process group and waits at most 10 s. A start timeout also kills the child. The child now has an `error` handler. Runner errors are captured per version and the exit stays nonzero. The test-only `--fault=start-timeout|after-start` flag proves this. Both runs exited 1 with 0 orphan processes (`fault-*.txt`).
+
+Provenance: `src/core/message-id.ts` now carries the full upstream MIT notice in a `/*!` header. Verified that it is kept in `dist/core/message-id.js`.
+
+Validation: `npm run build`, `npm run check` (exit 0). Cloud `test:host` on 2.0.0 and 2.2.5: all 16 scenarios and every invariant pass. SDK `test:host`, `test:req` and `test:t2` pass. Shared isolation is unchanged, so `test:t2-create` was not rerun. Nothing committed.
+
+## 2026-11-05: receipt persistence fix independently verified
+
+The remaining delivery-write failure is fixed. Validated event evidence survives a failed storage write, the adapter reports the error, and reconciliation persists delivery without another admission. A process-local validated-response cache covers delivery racing the failed admission-result write. It never authorizes unattempted or mismatching receipts. Evidence remains conservative after a process crash.
+
+Lead verification used `.fixtures/receipt-commit-check`, an export of HEAD overlaid with only the files in this receipt slice. This avoids including concurrent SDK, Cloud client, control and release changes in its proof. `npm ci --ignore-scripts`, `npm run build`, `npm run check`, `npm run test:host` and `npm run test:req` all passed in that export. Receipt unit tests total 39. Both real hosts, 2.0.0 and 2.2.5, passed all 16 receipt scenarios and every invariant, with no orphan processes. The SDK provider and request regression fixtures passed too. The exact commands and logs are in `.fixtures/lead-verification/receipt-snapshot-*.log`.
+
+G5's listed minimum/latest T1 scenarios pass for the receipt implementation. This does not qualify the unfinished Cloud client or TUI, a real-host compaction case, or any live Cursor behavior. No accepted facts or plan were changed. The remaining functional lanes continue separately.

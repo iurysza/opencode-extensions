@@ -1,7 +1,7 @@
 // Shared isolation for real-host probes (T1, T2): `env -i`, isolated HOME/XDG under a fixture
 // base, and a macOS sandbox that denies non-loopback network and reads of real agent config
 // dirs. `prepareIsolatedBase` proves the denials positively (EPERM) or calls `die`. Fails closed.
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
@@ -59,6 +59,20 @@ export function sandboxed(base, cmd, args, cwd) {
     encoding: "utf8",
     timeout: 90_000,
     maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+/**
+ * Long-lived variant of `sandboxed` (same `env -i` env and profile) for a host server. `extra`
+ * adds env entries such as a generated server password; it must never carry real credentials.
+ * The caller owns the child and must kill it.
+ */
+export function sandboxedSpawn(base, cmd, args, cwd, extra = {}) {
+  const env = { ...isolatedEnv(base), ...extra };
+  return spawn("/usr/bin/env", ["-i", ...Object.entries(env).map(([k, v]) => `${k}=${v}`), "/usr/bin/sandbox-exec", "-f", join(base, "sb.sb"), cmd, ...args], {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+    detached: true, // own process group: the caller can kill the whole tree with -pid
   });
 }
 

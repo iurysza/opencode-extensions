@@ -1,10 +1,17 @@
 {
   "name": "@iurysza/opencode-cursor-cloud",
   "version": "0.0.0",
-  "description": "OpenCode 2.x background Cursor Cloud delegation. Not implemented yet (milestone M4).",
+  "description": "OpenCode 2.x background Cursor Cloud delegation. Completion receipts only so far (milestone M4).",
   "license": "MIT",
   "private": true,
   "type": "module",
+  "exports": {
+    "./completion": "./dist/plugin/completion.js",
+    "./receipts": "./dist/core/receipts.js"
+  },
+  "files": [
+    "dist"
+  ],
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.0 <3"
   },
@@ -12,5 +19,11 @@
     "@opencode/plugin": {
       "optional": true
     }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.min.json",
+    "test": "vitest run test/unit",
+    "test:host": "node test/t1/run-receipts.mjs"
   }
 }
