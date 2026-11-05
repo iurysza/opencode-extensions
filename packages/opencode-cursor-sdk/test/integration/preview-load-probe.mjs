@@ -15,7 +15,7 @@ const rpc = (owner, method) => call(`/api/rpc/${owner}/${method}`, { input: { sc
 const status = await rpc("cursor-sdk-controls", "status");
 assert.equal(status.status, 200, JSON.stringify(status));
 assert.equal(status.json.output.code, "ok");
-assert.deepEqual(status.json.output.snapshot, { state: "idle", runtime: "local" });
+assert.deepEqual(status.json.output.snapshot, { state: "idle", runtime: "local", mode: "agent", tools: "both" });
 const models = await rpc("cursor-sdk-controls", "models");
 assert.equal(models.json.output.code, "ok"); assert.ok(models.json.output.snapshot.items.length > 0);
 assert.ok(models.json.output.snapshot.items.some(item => item.id === "composer-2.5"));

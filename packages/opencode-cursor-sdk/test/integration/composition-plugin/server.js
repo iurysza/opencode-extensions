@@ -8,8 +8,8 @@ export default { id: "composition-proof", async setup(ctx) {
   const sdk = {
     models: async () => [{ id: "composer-2.5", displayName: "Composer" }],
     openStore: async () => ({ store: {}, dispose: async () => log({ at: "local-store-dispose" }) }),
-    create: async () => { log({ at: "local-create" }); return { close: () => log({ at: "local-close" }), send: async (_text, options) => {
-      log({ at: "local-send" }); await options.onDelta?.({ update: { type: "text-delta", text: "LOCAL_COMPOSED" } });
+    create: async options => { log({ at: "local-create", mode: options.mode, tools: options.tools ?? "standard", openCodeMcp: Object.keys(options.mcpServers ?? {}).some(name => name.startsWith("opencode_")) }); return { close: () => log({ at: "local-close" }), send: async (_text, options) => {
+      log({ at: "local-send", mode: options.mode, openCodeMcp: Object.keys(options.mcpServers ?? {}).some(name => name.startsWith("opencode_")) }); await options.onDelta?.({ update: { type: "text-delta", text: "LOCAL_COMPOSED" } });
       return { wait: async () => ({ id: "local-run", status: "finished" }), cancel: async () => log({ at: "local-cancel" }) };
     } }; },
   };

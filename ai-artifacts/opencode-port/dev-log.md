@@ -245,3 +245,11 @@ Parent review caught that the first preview generator targeted package roots des
 The private alpha is ready for Iury's first manual local smoke using the pinned local OpenCode 2.2.5 binary. It does not modify either live setup. This is not completion of the accepted end-to-end goal: helpers, durable local resume, full local settings, model-cache persistence, further TUI/version qualification and live SDK/Cloud checks remain open. No agent ran a real Cursor prompt or Cloud agent.
 
 The built release plan was refreshed after Iury chose `iurysza/opencode-extensions`. Root and children remain private; release automation remains disabled. No remote creation, push, tag, release, publish, merge or history rewrite occurred. The first real SDK result, or a separately approved live probe, is the next verification boundary.
+
+## 2026-11-05: nudge-2105 controls checkpoint before lnx1
+
+Implemented local mode and tool-policy RPC controls, option-aware pool invalidation, and trusted local-setting mapping. Mode and tools reach public create/send options. Native-only creates no OpenCode MCP bridge; bridge-only offers only MCP. User/env safety precedence is unchanged, and unsupported session safety or host force fields reject rather than silently disappear. Runtime switches preserve the full validated session record. The original per-send MCP override exists; a suspected stale-URL bug was not established and is recorded as a qualification task instead.
+
+Lead checks passed: clean install, build, 55 script tests, 348 SDK unit tests, 269 Cloud unit tests, package inspections, bridge and RPC endpoint probes, production composition on both endpoints, and all four default-preview combinations. Updated composition fixtures now assert the implemented controls rather than expecting unavailable. Evidence: `.fixtures/lead-verification/nudge-2105-*.log`.
+
+The prior ed754c2 alpha is frozen under `.fixtures/home-alpha-ed754c2`, with independent APFS-cloned dependencies, for stable macOS testing while development continues. No live SDK prompt ran. Helpers, durable resume, model cache and remaining controls are parked in `remaining-work.md`. Next: lnx1 on a new linux-sandbox worktree, without changing the cursor-port test target. The user-provided `ai-artifacts-brief-lnx1.md` stays untouched and uncommitted.

@@ -6,6 +6,7 @@ import { codingOnly } from "../provider/language-model.js";
 
 export interface LocalPluginOptions {
   readonly loadSdk?: LocalRuntimeDependencies["loadSdk"];
+  readonly getOptions?: LocalRuntimeDependencies["getOptions"];
   readonly stateRoot?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly warn?: (message: string) => void;
@@ -41,6 +42,7 @@ export async function composeLocal(context: unknown, options: LocalPluginOptions
     cwd: ctx.location.directory,
     stateRoot: options.stateRoot ?? join(env.XDG_STATE_HOME ?? join(env.HOME ?? homedir(), ".local", "state"), "opencode", "cursor-sdk"),
     getApiKey: () => resolveHostKey(ctx, env),
+    getOptions: options.getOptions,
     inspectSession: async (sessionID) => {
       const [info, messages] = await Promise.all([ctx.session.get({ sessionID }), ctx.session.context({ sessionID })]);
       return { info, messages };

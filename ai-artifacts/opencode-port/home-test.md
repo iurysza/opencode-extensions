@@ -110,7 +110,7 @@ Foreground archive and delete require explicit confirmation and a ledger-recorde
 
 - Helpers refuse until G4b passes. Select a separately approved non-Cursor helper model if needed. The 2.2.5 generate endpoint retries the refusal until interrupted.
 - Durable local resume and confirmed resume cleanup are unavailable. Local ownership starts fresh after restart.
-- Fast, mode, tools, HTTP, resume-cleanup settings, and explicit model-cache refresh return `not_implemented`. They do not pretend to save ignored options.
+- On the current branch, local mode and tool-policy controls are implemented; the frozen `ed754c2` alpha predates them. Fast, HTTP, resume-cleanup settings, and explicit model-cache refresh still return `not_implemented`. They do not pretend to save ignored options.
 - Models and status reads never start an SDK or Cloud operation. RPC model lists are bundled real fallback IDs, not live discovery. Foreground selection accepts only fallback-catalog parameters and the default variant.
 - `refreshConfig` rereads and validates host storage and project options. This is not an editor for local SDK settings. Environment values are captured at setup.
 - Public RPC transport and state pushes have isolated real-host evidence. The control owner separately proved rendered standalone and attached-local TUI behavior at 2.0.0 and 2.2.5 with fake action owners. Intermediate OpenTUI lines and live-action parity remain unverified. See [control evidence](./control-tui-note.md). No exact Pi transcript-card parity is claimed.

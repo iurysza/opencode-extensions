@@ -14,7 +14,7 @@ Local is the default. Foreground Cloud requires explicit session acknowledgment 
 
 Use the repository's [isolated preview guide](../../ai-artifacts/opencode-port/home-test.md). Built directory targets use `dist/server.js` and `dist/tui.js`. Do not point the first preview at your live OpenCode config.
 
-Status, fallback models, runtime choice, host-config validation, and session ledger controls are wired to the backend owner. Foreground archive and delete require confirmation and recorded session-owned IDs. Fast, mode, tools, HTTP, resume cleanup, and model-cache refresh return `not_implemented`; they do not save ignored settings.
+Status, fallback models, runtime choice, host-config validation, and session ledger controls are wired to the backend owner. Local mode (`agent` or `plan`) and tool policy (`native`, `bridge` or `both`) persist through confirmed scope-bound controls and reach the SDK. User/env sandbox and auto-review settings retain their existing precedence. Foreground archive and delete require confirmation and recorded session-owned IDs. Fast, HTTP, resume cleanup, and model-cache refresh still return `not_implemented`; they do not save ignored settings.
 
 RPC push events and native dialogs replace Pi command displays. OpenCode 2.x has no transcript-card slot, so exact Pi tidy-card parity is not claimed. The control owner proved endpoint standalone and attached-local rendered behavior with fake action owners. Intermediate OpenTUI lines and live-action parity remain unqualified.
 

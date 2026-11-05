@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentOptions, LocalAgentStore, ModelListItem, ModelSelection, RunResult, SendOptions } from "@cursor/sdk";
 import { compactionToken } from "../compat/compaction-token.js";
+import { DEFAULT_LOCAL_RUN_OPTIONS, type LocalRunOptions } from "../core/local-settings.js";
 import { ToolBridge, json, record } from "../core/bridge.js";
 import type { CursorTurnEvent, CursorTurnRequest, CursorTurnSource } from "../core/turn-events.js";
 
@@ -141,6 +142,8 @@ export interface LocalRuntimeDependencies {
   readonly cwd: string;
   readonly stateRoot: string;
   readonly getApiKey: () => Promise<string | undefined>;
+  /** Evaluated on every request, including continuations; defaults preserve fake SDK ports. */
+  readonly getOptions?: (request: CursorTurnRequest) => Promise<LocalRunOptions>;
   /** Public ctx.session.get/context, evaluated for every request, including continuations. */
   readonly inspectSession: (sessionID: string) => Promise<{ readonly info: unknown; readonly messages: unknown }>;
   readonly loadSdk?: () => Promise<LocalSdkPort>;
@@ -298,14 +301,16 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
       if (info?.id !== id) throw new LocalTurnError("failed");
       const compact = compactionToken(snapshot.messages);
       if (compact._tag === "err") throw new LocalTurnError("failed");
+      const options = deps.getOptions ? await deps.getOptions(request) : DEFAULT_LOCAL_RUN_OPTIONS;
+      checkOpen(request);
       const model = await selection(apiKey, request);
       checkOpen(request);
-      const signature = hash([apiKey, deps.cwd, model, info.fork ?? null, compact.value]);
+      const signature = hash([apiKey, deps.cwd, model, options, info.fork ?? null, compact.value]);
       state = sessions.get(id);
       const prompt = Array.isArray(request.prompt) ? request.prompt : [];
       // A strict prefix allows new user messages and tool results, not edited history.
       const diverged = state && (prompt.length < state.history.length || state.history.some((entry, index) => hash(entry) !== hash(prompt[index])));
-      if (state && (state.signature !== signature || diverged)) { await reset(id); state = undefined; }
+      if (state && (state.signature !== signature || diverged)) { await reset(id); checkOpen(request); state = undefined; }
       checkOpen(request);
       if (state?.live) {
         try { state.live.bridge.ingest(request.prompt); } catch { throw new LocalTurnError("bridge"); }
@@ -316,7 +321,7 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
         checkOpen(request);
         const queue = new EventQueue();
         const redactor = new SecretStream(apiKey, (type, text) => queue.push({ type, text: safeText(apiKey, text) }));
-        const bridge = new ToolBridge(request.tools, (event) => {
+        const bridge = new ToolBridge(options.tools === "native" ? [] : request.tools, (event) => {
           redactor.flush();
           queue.push({ ...event, ...(event.type === "bridge-tool-call" ? { toolName: safeText(apiKey, event.toolName), input: json(safeValue(apiKey, event.input)) } : {}) });
         });
@@ -328,7 +333,8 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
           request.abortSignal?.removeEventListener("abort", abortPreparation);
         };
         try {
-          await bridge.start();
+          if (options.tools !== "native") await bridge.start();
+          checkOpen(request);
           preparations.add(closePreparation);
           request.abortSignal?.addEventListener("abort", abortPreparation, { once: true });
           checkOpen(request);
@@ -339,7 +345,11 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
             let agent: LocalAgent | undefined;
             try {
               checkOpen(request);
-              agent = await port.create({ apiKey, model, local: { cwd: deps.cwd, store: store.store, settingSources: [], enableAgentRetries: false }, ...(bridge.url ? { mcpServers: { [bridge.serverName]: { type: "http", url: bridge.url } } } : {}) });
+              agent = await port.create({ apiKey, model, mode: options.mode,
+                ...(options.tools === "bridge" ? { tools: ["mcp"] } : {}),
+                local: { cwd: deps.cwd, store: store.store, settingSources: [], enableAgentRetries: false,
+                  autoReview: options.autoReview, sandboxOptions: { enabled: options.sandboxEnabled } },
+                ...(bridge.url ? { mcpServers: { [bridge.serverName]: { type: "http", url: bridge.url } } } : {}) });
               checkOpen(request);
               state = { signature, generation, store, agent, history: [] };
               sessions.set(id, state);
@@ -357,15 +367,15 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
           const text = state.history.length ? prompt.slice(state.history.length) : prompt;
           // Start in the background: SDK send may itself wait on an MCP callback.
           void state.agent.send(JSON.stringify(text), {
-            model,
-            mcpServers: bridge.url ? { [bridge.serverName]: { type: "http", url: bridge.url } } : {},
+            model, mode: options.mode, local: { force: options.force },
+            ...(options.tools !== "native" ? { mcpServers: bridge.url ? { [bridge.serverName]: { type: "http", url: bridge.url } } : {} } : {}),
             onDelta: ({ update }) => observe(live, apiKey, update, native, completed),
             onStep: ({ step }) => observe(live, apiKey, step, native, completed),
           }).then(async (run) => {
+            if (live.cancelled || disposed || request.abortSignal?.aborted) { await run.cancel(); return; }
             live.run = run;
-            if (live.cancelled) { await run.cancel(); return; }
             const result = await run.wait();
-            if (live.cancelled) return;
+            if (live.cancelled || disposed || request.abortSignal?.aborted) return;
             if (result.status !== "finished") throw result.status === "cancelled" ? new LocalTurnError("abort") : result.error;
             if ([...native.values()].some((callId) => !completed.has(callId))) throw new LocalTurnError("failed");
             if (typeof result.result === "string") observe(live, apiKey, { type: "assistantMessage", message: { text: result.result } }, native, completed);
@@ -388,6 +398,10 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
       }
       for (;;) {
         const event = await live.queue.next();
+        // Cancellation queues a final redacted prefix before its AbortError.
+        // Drain that cleanup text, but never mutate state or touch the SDK here.
+        if (live.cancelled && (event.type === "text" || event.type === "thinking")) { yield event; continue; }
+        checkOpen(request);
         if (event.type === "bridge-tool-call") {
           live.bridge.markEmitted(event.callId);
           yield event;
@@ -399,6 +413,7 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
           // V3 consumers may stop pulling immediately after finish. Commit cleanup
           // before yielding it, otherwise generator.return() abandons a healthy agent.
           await disposeLive(live, false);
+          checkOpen(request);
           state.live = undefined;
           yield event;
           return;
