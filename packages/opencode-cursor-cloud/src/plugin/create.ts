@@ -70,7 +70,7 @@ export function createCloudPlugin(options: CloudPluginOptions = {}) {
       const project = (result: CloudResponse): SnapshotInput => {
         if (result._tag === "err") throw new Error("Cursor Cloud action refused.");
         return { items: result.value.agents.slice(0, 100).map(agent => ({ id: agent.id,
-          state: agent.status.type === "starting" || agent.status.type === "running" ? "running" :
+          state: agent.remote === "never" ? "not_created" : agent.status.type === "starting" || agent.status.type === "running" ? "running" :
             agent.status.type === "idle" ? "finished" : agent.status.type === "cancelled" ? "cancelled" : "failed" })) };
       };
       const checkAbort = (signal: AbortSignal) => { if (signal.aborted) throw new Error("Cloud action aborted."); };

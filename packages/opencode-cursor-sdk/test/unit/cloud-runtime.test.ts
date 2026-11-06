@@ -198,6 +198,25 @@ describe("foreground Cloud source", () => {
     expect(output).not.toContain("fake-personal-key"); expect(output).not.toContain("user:secret"); expect(output).not.toContain("secret=1"); expect(output).not.toContain("\\u001b");
     expect(output).toContain("display only"); expect(events.every(event => !event.type.includes("usage"))).toBe(true);
   });
+
+  it("shows safe SDK error details and keeps unknown errors generic", async () => {
+    const f = fixture();
+    f.activity(async () => {
+      const error = Object.assign(new Error("[integration_not_connected] Connect GitHub fake-personal-key"), { name: "IntegrationNotConnectedError",
+        code: "integration_not_connected", status: 400, isRetryable: false, provider: "github", helpUrl: "https://cursor.com/help", requestId: "req-7",
+        cause: { secret: "raw-cause" } });
+      throw error;
+    });
+    const failure = await collect(createForegroundCloudSource(f.deps)(request())).catch((error: unknown) => error as Error);
+    expect(failure).toBeInstanceOf(Error);
+    const message = (failure as Error).message;
+    expect(message).toContain("GitHub integration not connected (integration_not_connected, HTTP 400)");
+    expect(message).toContain("Connect it: https://cursor.com/help"); expect(message).toContain("Request: req-7");
+    expect(message).not.toContain("fake-personal-key"); expect(message).not.toContain("raw-cause");
+    const g = fixture(); g.activity(async () => { throw new Error("fake-personal-key internal"); });
+    const generic = await collect(createForegroundCloudSource(g.deps)(request())).catch((error: unknown) => error as Error);
+    expect((generic as Error).message).toBe("Cursor Cloud operation failed. Inspect the durable ledger and Cursor dashboard before retrying.");
+  });
 });
 
 

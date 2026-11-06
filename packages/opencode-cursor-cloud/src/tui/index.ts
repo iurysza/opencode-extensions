@@ -69,12 +69,14 @@ export function createTuiControls(ctx: Plugin.Context) {
   async function list(scope: Scope, action: string) {
     const result = await invoke("ledger", { scope });
     if (!result) return;
-    const rows = result.snapshot?.items ?? [];
+    const label = (state: string) => state.replaceAll("_", " ");
+    // Agents Cursor never created cannot take follow-ups; the service would refuse them.
+    const rows = (result.snapshot?.items ?? []).filter(row => action !== "followup" || row.state !== "not_created");
     if (action === "list") {
-      await ctx.ui.dialog.alert({ title: "Cloud ledger", message: rows.length ? rows.map(row => displayText(row.id) + "  " + row.state).join("\n") : "No entries for this session" });
+      await ctx.ui.dialog.alert({ title: "Cloud ledger", message: rows.length ? rows.map(row => displayText(row.id) + "  " + label(row.state)).join("\n") : "No entries for this session" });
       return;
     }
-    const id = await ctx.ui.dialog.select({ title: "Select entry to " + action, options: rows.map(row => ({ title: displayText(row.id), value: row.id, description: row.state })) });
+    const id = await ctx.ui.dialog.select({ title: "Select entry to " + action, options: rows.map(row => ({ title: displayText(row.id), value: row.id, description: label(row.state) })) });
     if (!id || !same(scope)) return;
     if (action === "followup") {
       const prompt = await ctx.ui.dialog.prompt({ title: "Cloud follow-up", description: "Send another task to this remote agent. Cloud billing applies." });

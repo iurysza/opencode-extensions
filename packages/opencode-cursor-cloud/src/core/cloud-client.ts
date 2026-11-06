@@ -2,6 +2,7 @@
 import type { SDKAgent, SendOptions, RunResult } from "@cursor/sdk";
 import type { Activity, Outcome } from "./state.js";
 import { cleanText } from "./render.js";
+import { AGENT_BUSY, describeSdkError } from "./sdk-error.js";
 
 type Delta = Parameters<NonNullable<SendOptions["onDelta"]>>[0]["update"];
 type Step = Parameters<NonNullable<SendOptions["onStep"]>>[0]["step"];
@@ -30,11 +31,20 @@ export function redact(text: string, key: string): string {
   return key ? text.replaceAll(key, "[redacted]") : text;
 }
 
-/** No raw SDK errors: they can include a serialized client holding credentials. */
-export function cloudError(error: unknown, operation: string): string {
-  if (error instanceof Error && error.message.includes("[agent_busy]")) return "Agent already has an active run. Wait until it is idle before sending a follow-up.";
-  return `Cursor Cloud ${operation} failed. Check authentication, repository access, and Cursor service availability.`;
+/** A message already made safe at the client boundary, where the key is known. */
+export class CloudFailure extends Error { override name = "CloudFailure"; }
+
+/**
+ * No raw SDK errors: they can include a serialized client holding credentials.
+ * Known SDK errors keep their class, code, status, request ID and a redacted server line.
+ */
+export function cloudError(error: unknown, operation: string, key = ""): string {
+  if (error instanceof CloudFailure) return error.message;
+  if (error instanceof Error && error.message.includes("[agent_busy]")) return AGENT_BUSY;
+  return describeSdkError(error, operation, key)
+    ?? `Cursor Cloud ${operation} failed. Check authentication, repository access, and Cursor service availability.`;
 }
+const fail = (error: unknown, operation: string, key: string) => new CloudFailure(cloudError(error, operation, key));
 
 function toolActivity(tool: { type: string; args?: unknown }): string {
   let detail = "";
@@ -144,7 +154,7 @@ function wrapHandle(agent: SDKAgent, key: string): CloudHandle {
       try {
         for (const finish of finalizers) finish();
         agent.close();
-      } catch (error) { throw new Error(cloudError(error, "close")); }
+      } catch (error) { throw fail(error, "close", key); }
     },
     async send(prompt, emit) {
       const text = streamingKey(key); // New run, including every follow-up, starts empty.
@@ -185,7 +195,7 @@ function wrapHandle(agent: SDKAgent, key: string): CloudHandle {
         return {
           id: run.id,
           async cancel() {
-            try { await run.cancel(); finish(); } catch (error) { throw new Error(cloudError(error, "cancel")); }
+            try { await run.cancel(); finish(); } catch (error) { throw fail(error, "cancel", key); }
           },
           async wait() {
             try {
@@ -195,13 +205,13 @@ function wrapHandle(agent: SDKAgent, key: string): CloudHandle {
               return { ...completion, result: { ...completion.result, text: completion.result.text || snapshot } };
             } catch (error) {
               finish();
-              throw new Error(cloudError(error, "wait"));
+              throw fail(error, "wait", key);
             }
           },
         };
       } catch (error) {
         finish();
-        throw new Error(cloudError(error, "send"));
+        throw fail(error, "send", key);
       }
     },
   };
@@ -216,7 +226,7 @@ export function createCloudClient(getKey: () => Promise<string>, sdk: SdkLoader 
     async models() {
       const apiKey = await getKey();
       try { const { Cursor } = await sdk(); return (await Cursor.models.list({ apiKey })).map(({ id, displayName }) => ({ id, displayName })); }
-      catch (error) { throw new Error(cloudError(error, "model listing")); }
+      catch (error) { throw fail(error, "model listing", apiKey); }
     },
     async create(options) {
       const apiKey = await getKey();
@@ -224,12 +234,12 @@ export function createCloudClient(getKey: () => Promise<string>, sdk: SdkLoader 
         const { Agent } = await sdk();
         return wrapHandle(await Agent.create({ apiKey, model: { id: options.model },
           cloud: { repos: [{ url: options.repo, startingRef: options.ref }] } }), apiKey);
-      } catch (error) { throw new Error(cloudError(error, "create")); }
+      } catch (error) { throw fail(error, "create", apiKey); }
     },
     async delete(id) {
       const apiKey = await getKey();
       try { const { Agent } = await sdk(); await Agent.delete(id, { apiKey }); }
-      catch (error) { throw new Error(cloudError(error, "delete")); }
+      catch (error) { throw fail(error, "delete", apiKey); }
     },
   };
 }

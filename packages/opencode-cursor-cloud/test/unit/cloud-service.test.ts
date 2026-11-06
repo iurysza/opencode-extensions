@@ -171,6 +171,40 @@ describe("production Cloud lifecycle with injected clients", () => {
     expect((await spawn(remote))._tag).toBe("err"); expect(remote.created).toEqual([]); await remote.service.dispose();
   });
 
+  it("a failed first send marks the agent never created, drops its link and refuses follow-ups", async () => {
+    const r = rig(); r.pendingSend(); await spawn(r);
+    await until(() => r.runs.length === 1);
+    r.runs[0]!.ready.reject(new Error("first send failed"));
+    await until(() => r.host.calls.length === 1);
+    const status = value(await r.service.status("s1"));
+    expect(status.agents[0]).toMatchObject({ remote: "never", status: { type: "failed" } });
+    expect(status.text).toContain("not created");
+    expect(status.text).toContain("This agent was never created on Cursor. Start a new agent.");
+    expect(status.text).not.toContain("cursor.com/agents");
+    // The receipt reports the observed failure without a dead link.
+    expect(r.host.calls[0]?.text).toContain("not created on Cursor");
+    expect(r.host.calls[0]?.text).not.toContain("cursor.com/agents");
+    const refused = await r.service.send("s1", "agent-1", "again");
+    expect(refused).toEqual({ _tag: "err", error: { message: "This agent was never created on Cursor. Start a new agent." } });
+    expect(r.sent).toEqual(["implement"]);
+    await r.service.dispose();
+  });
+
+  it("a failed follow-up after a created run keeps the agent and its link", async () => {
+    const r = rig(); await spawn(r);
+    r.runs[0]!.done.resolve(finished); await until(() => r.host.calls.length === 1);
+    expect(r.host.calls[0]?.text).toContain("Open: https://cursor.com/agents/bc-agent-1");
+    r.pendingSend(); expect((await r.service.send("s1", "agent-1", "next"))._tag).toBe("ok");
+    await until(() => r.runs.length === 2);
+    r.runs[1]!.ready.reject(new Error("send failed"));
+    await until(() => r.host.calls.length === 2);
+    const status = value(await r.service.status("s1"));
+    expect(status.agents[0]).toMatchObject({ remote: "created", status: { type: "failed" } });
+    expect(status.text).toContain("https://cursor.com/agents/bc-agent-1");
+    expect(status.text).not.toContain("not created");
+    await r.service.dispose();
+  });
+
   it("sanitizes unexpected client errors and returns immutable snapshots", async () => {
     const r = rig(); await spawn(r);
     value(await r.service.status("s1")).agents[0]!.name = "mutated";
@@ -184,7 +218,7 @@ describe("production Cloud lifecycle with injected clients", () => {
 });
 
 it("ported reducer deduplicates terminal and tool events", () => {
-  const agent: CloudAgent = { id: "bc-a", name: "a", description: "p", repo: "r", ref: "main", model: "m", startedAt: 0, status: { type: "starting" }, text: "", tools: 0, toolCallIds: [], activity: "" };
+  const agent: CloudAgent = { id: "bc-a", remote: "pending", name: "a", description: "p", repo: "r", ref: "main", model: "m", startedAt: 0, status: { type: "starting" }, text: "", tools: 0, toolCallIds: [], activity: "" };
   let state = reduce([], { type: "spawned", agent });
   const tool = { type: "delta" as const, id: "bc-a", activity: { type: "tool" as const, callId: "x", activity: "shell" } };
   state = reduce(reduce(state, tool), tool); expect(state[0]?.tools).toBe(1);
