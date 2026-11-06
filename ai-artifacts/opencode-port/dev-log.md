@@ -271,3 +271,12 @@ Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime
 - `acquire.mjs` fetched `@opencode/cli-linux-x64` 2.0.0 and 2.2.5 with matching sha512. `test:host`, `test:req` and `test:t2` passed on both versions.
 - `test:tui` skipped: no termctrl on that host, which `linux-test.md` allows. No bugs found.
 - Linux ARM64 is still untested.
+
+## 2026-11-06: billing error hint and @cursor/sdk 1.0.40
+
+- `sdk-error.ts` (both copies, still identical) maps code `usage_limit_exceeded` to "usage limit reached" with a billing hint, checked before the name-based kinds. A live run had returned it as `ConfigurationError`, HTTP 400, labelled with a wrong model/repo hint.
+- `@cursor/sdk` pin moved from exact 1.0.37 to exact 1.0.40 in both children. 1.0.38+ makes `zod` a peer (`^3.25.0 || ^4.0.0`). Both children now declare `zod: ^4.6.6`. The root also needs a `zod: ^4.6.6` devDependency: without it npm hoists `zod@4.1.8` (exact dep of the dev-only `opencode-plugin-min` = `@opencode/plugin@2.0.0`) to the root, and the hoisted SDK resolves that. Now the SDK resolves `zod@4.6.7`.
+- The layout guard, its tests and the T2 version guards now expect 1.0.40.
+- `npm audit --omit=dev` no longer reports GHSA-mrhx-c7xc-m3w5 (26 moderate, none high). Full `npm audit` still reports it only at `node_modules/opencode-plugin-min/node_modules/zod` (dev-only 2.0.0 host typings). This supersedes the accepted 1.0.37 audit risk for the runtime path.
+- Not done: T2 offline and keyless create probes were not rerun on 1.0.40 (no `.fixtures/inspect` binaries in this worktree). G7 requalification still applies. Research notes that record 1.0.37 findings are unchanged.
+- Validation: `npm ci --ignore-scripts`, `npm run build`, `npm run check` pass (scripts 55/55, SDK 413 passed + 1 skipped, Cloud 284). `load-boundary.test.ts` 5/5.

@@ -18,7 +18,7 @@ function fixture(t) {
   writeFileSync(join(root, "package-lock.json"), "{}");
   for (const [dir, name] of packages) {
     mkdirSync(join(root, "packages", dir), { recursive: true });
-    writeFileSync(join(root, "packages", dir, "package.json"), JSON.stringify({ name, dependencies: { "@cursor/sdk": "1.0.37" } }));
+    writeFileSync(join(root, "packages", dir, "package.json"), JSON.stringify({ name, dependencies: { "@cursor/sdk": "1.0.40" } }));
   }
   return root;
 }
@@ -42,8 +42,8 @@ test("missing child manifest fails", (t) => {
 
 for (const [dir] of packages) {
   const path = `packages/${dir}/package.json`;
-  const pinError = `packages/${dir} must declare @cursor/sdk 1.0.37 as a runtime dependency`;
-  for (const version of ["1.0.23", "^1.0.37", "~1.0.37", "latest", "npm:@cursor/sdk@1.0.37"]) {
+  const pinError = `packages/${dir} must declare @cursor/sdk 1.0.40 as a runtime dependency`;
+  for (const version of ["1.0.23", "^1.0.40", "~1.0.40", "latest", "npm:@cursor/sdk@1.0.40"]) {
     test(`${dir} rejects SDK version ${version}`, (t) => {
       const root = fixture(t);
       updateManifest(root, path, (pkg) => { pkg.dependencies["@cursor/sdk"] = version; });
@@ -60,7 +60,7 @@ for (const [dir] of packages) {
       const root = fixture(t);
       updateManifest(root, path, (pkg) => {
         delete pkg.dependencies;
-        pkg[field] = { "@cursor/sdk": "1.0.37" };
+        pkg[field] = { "@cursor/sdk": "1.0.40" };
       });
       assert.deepEqual(checkLayout(root), [pinError]);
     });

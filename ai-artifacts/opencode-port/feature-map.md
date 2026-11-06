@@ -124,7 +124,7 @@ Every row is in parity scope. "Phase 1" means this study only, not a settings-on
 | Skill tool hidden in Cloud. Ask-question inert. | `src/cursor-skill-tool.ts:249`, `src/cursor-question-tool.ts:193` | Gate both on runtime explicitly | Yes (portable, unverified) |
 | Cloud attach or resume | Not implemented in either Pi path | Non-goal | N/A |
 
-SDK evidence drift: the Cloud docs and live evidence cite `@cursor/sdk` 1.0.23, but the package pins 1.0.37 (`sdk-cloud-settings.md` D2). Gate G7 requalifies them.
+SDK evidence drift: the Cloud docs and live evidence cite `@cursor/sdk` 1.0.23, but the package pins 1.0.40 (was 1.0.37; `sdk-cloud-settings.md` D2). Gate G7 requalifies them.
 
 ## Background Cloud delegation
 

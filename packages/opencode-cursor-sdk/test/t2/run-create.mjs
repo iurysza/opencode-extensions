@@ -30,7 +30,7 @@ const die = (message) => {
 requireIsolationTools(die);
 if (!existsSync(join(pkg, "dist/plugin/create.js"))) die("dist missing; run npm run build first");
 const sdkVersion = JSON.parse(readFileSync(join(repo, "node_modules/@cursor/sdk/package.json"), "utf8")).version;
-if (sdkVersion !== "1.0.37") die(`@cursor/sdk is ${sdkVersion}, expected 1.0.37`);
+if (sdkVersion !== "1.0.40") die(`@cursor/sdk is ${sdkVersion}, expected 1.0.40`);
 
 /** Processes whose command line still references the fixture base after the run. */
 function survivors(base) {

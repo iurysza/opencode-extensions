@@ -45,7 +45,8 @@
     "test:hosttools": "node test/t1/run-cloud-tools.mjs"
   },
   "dependencies": {
-    "@cursor/sdk": "1.0.37"
+    "@cursor/sdk": "1.0.40",
+    "zod": "^4.6.6"
   },
   "publishConfig": {
     "access": "public",
