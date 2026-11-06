@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AgentOptions, LocalAgentStore, ModelListItem, ModelSelection, RunResult, SendOptions } from "@cursor/sdk";
 import { compactionToken } from "../compat/compaction-token.js";
+import { FALLBACK_MODELS, resolveModelSelection } from "./models.js";
 import { DEFAULT_LOCAL_RUN_OPTIONS, type LocalRunOptions } from "../core/local-settings.js";
 import { ToolBridge, json, record } from "../core/bridge.js";
 import type { CursorTurnEvent, CursorTurnRequest, CursorTurnSource } from "../core/turn-events.js";
@@ -29,13 +30,7 @@ export async function loadLocalSdk(): Promise<LocalSdkPort> {
   };
 }
 
-// Public model metadata from Pi's 1.0.23 snapshot. No generated SDK code.
-export const FALLBACK_MODELS: readonly ModelListItem[] = [
-  { id: "auto-smart", displayName: "Auto", parameters: [{ id: "optimize_for", values: [{ value: "intelligence" }, { value: "balanced" }, { value: "cost" }] }] },
-  { id: "composer-2.5", displayName: "Composer 2.5" },
-  { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
-];
-export const FALLBACK_SPECS = FALLBACK_MODELS.map((model) => ({ id: model.id, name: model.displayName, context: 200_000, output: 32_000 }));
+export { FALLBACK_MODELS, FALLBACK_SPECS } from "./models.js";
 const hash = (value: unknown): string => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const clean = (value: string): string => value.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|[\x00-\x08\x0b-\x1f\x7f]/g, "");
 
@@ -151,6 +146,8 @@ export interface LocalRuntimeDependencies {
 }
 export interface LocalControls {
   status(sessionID: string): { active: boolean; pending: boolean; generation: number };
+  /** Lists the account catalog for this key. `force` bypasses the per-key cache. Throws on failure. */
+  models(apiKey: string, options?: { readonly force?: boolean }): Promise<ModelListItem[]>;
   reset(sessionID: string): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -185,35 +182,31 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
     if (state.live) await disposeLive(state.live, true);
     try { state.agent.close(); } finally { await state.store.dispose(); }
   };
-  async function selection(apiKey: string, request: CursorTurnRequest): Promise<ModelSelection> {
+  /** Account catalog through the lazy SDK port, cached per key. Throws on an invalid or failed listing. */
+  async function listModels(apiKey: string, force = false, check: () => void = () => { if (disposed) throw new LocalTurnError("failed"); }): Promise<ModelListItem[]> {
     const key = hash(apiKey);
-    let catalog = catalogs.get(key);
-    if (!catalog) {
-      try {
-        const port = await sdk();
-        checkOpen(request);
-        catalog = await port.models(apiKey);
-        checkOpen(request);
-        if (!Array.isArray(catalog) || !catalog.length || catalog.some((m) => !m.id || !m.displayName)) throw new Error("Invalid catalog");
-        catalogs.set(key, catalog);
-      } catch {
-        checkOpen(request);
-        catalog = [...FALLBACK_MODELS];
-        deps.warn?.("Cursor model discovery unavailable; using bundled fallback models.");
-      }
+    const cached = catalogs.get(key);
+    if (cached && !force) return cached;
+    const port = await sdk();
+    check();
+    const catalog = await port.models(apiKey);
+    check();
+    if (!Array.isArray(catalog) || !catalog.length || catalog.some((m) => !m?.id || !m.displayName)) throw new Error("Invalid catalog");
+    catalogs.set(key, catalog);
+    return catalog;
+  }
+  async function selection(apiKey: string, request: CursorTurnRequest): Promise<ModelSelection> {
+    let catalog: readonly ModelListItem[];
+    try {
+      catalog = await listModels(apiKey, false, () => checkOpen(request));
+    } catch {
+      checkOpen(request);
+      catalog = FALLBACK_MODELS;
+      deps.warn?.("Cursor model discovery unavailable; using bundled fallback models.");
     }
-    const model = catalog.find((item) => item.id === request.modelId);
-    const variant = request.context.model.variant;
-    const provider = record(record(request.providerOptions)?.cursor);
-    if (provider && (Object.keys(provider).some((key) => key !== "params") || (provider.params !== undefined && !record(provider.params)))) throw new LocalTurnError("configuration");
-    const explicit = record(provider?.params);
-    const variantParams = variant === "default" ? model?.variants?.find((item) => item.isDefault)?.params : variant ? model?.variants?.find((item) => item.displayName === variant)?.params : undefined;
-    if (variant && variant !== "default" && !variantParams) throw new LocalTurnError("configuration");
-    const params = explicit ? Object.entries(explicit).map(([id, value]) => {
-      if (typeof value !== "string" || !model?.parameters?.some((p) => p.id === id && p.values.some((v) => v.value === value))) throw new LocalTurnError("configuration");
-      return { id, value };
-    }) : variantParams;
-    return { id: request.modelId, ...(params?.length ? { params } : {}) };
+    const model = resolveModelSelection(catalog, request.modelId, request.context.model.variant, request.providerOptions);
+    if (!model) throw new LocalTurnError("configuration");
+    return model;
   }
   function safeText(apiKey: string, text: string): string {
     return clean(text).split(apiKey).join("[redacted]").replace(/(Bearer\s+)[^\s"\\]+/gi, "$1[redacted]").replace(/(https?:\/\/)[^/\s@]+@/gi, "$1[redacted]@");
@@ -432,6 +425,7 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
   };
   return { source, controls: {
     status: (id) => ({ active: sessions.has(id), pending: !!sessions.get(id)?.live, generation: sessions.get(id)?.generation ?? generations.get(id) ?? 0 }),
+    models: (apiKey, options) => listModels(apiKey, options?.force === true),
     reset,
     dispose: async () => {
       disposed = true;

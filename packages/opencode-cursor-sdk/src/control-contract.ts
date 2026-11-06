@@ -51,7 +51,8 @@ export const text = (max: number, pattern?: RegExp) => schema<string>(v => {
   if (typeof v !== "string" || !v.trim() || v.length > max || secret.test(v) || /[\x00-\x08\x0b-\x1f\x7f-\x9f]/.test(v) || (pattern && !pattern.test(v))) throw 0;
   return v;
 });
-export const id = text(160, /^[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$/);
+// `@` carries a Cursor context choice in model IDs, as in Pi (`grok-4.7@256k`).
+export const id = text(160, /^[a-zA-Z0-9][a-zA-Z0-9_.:/@-]*$/);
 const optional = <T>(s: ValueSchema<T>) => schema<T | undefined>(v => v === undefined ? undefined : parse(s, v));
 const boolean = schema<boolean>(v => { if (typeof v !== "boolean") throw 0; return v; });
 const confirmed = schema<true>(v => { if (v !== true) throw 0; return true; });

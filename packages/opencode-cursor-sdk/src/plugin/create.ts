@@ -1,14 +1,17 @@
 import type { Plugin } from "@opencode/plugin";
 import type { LocalPluginOptions } from "./local.js";
 import type { RuntimeOptions } from "./runtime.js";
-import { FALLBACK_SPECS, type LocalControls } from "../provider/local-runtime.js";
-import { parseHost, type HostRefusal } from "../compat/host.js";
+import type { LocalControls } from "../provider/local-runtime.js";
+import { FALLBACK_SPECS } from "../provider/models.js";
+import { parseHost, subscribeEvents, type HostRefusal } from "../compat/host.js";
 import { registerProvider, type ProviderSpec } from "../compat/provider-registration.js";
 import { stampModelRequest } from "../compat/request-stamp.js";
 import type { TurnLanes } from "../core/lanes.js";
 import { createLanguageModel, createSdk, PROVIDER_ID } from "../provider/language-model.js";
 
 export const PLUGIN_ID = "iurysza.cursor-sdk";
+/** Public events after which the active Cursor key may have changed. */
+export const CONNECTION_EVENTS = ["credential.switched", "credential.updated", "integration.updated"] as const;
 
 export interface CursorPluginOptions {
   /**
@@ -19,7 +22,7 @@ export interface CursorPluginOptions {
   readonly local?: LocalPluginOptions;
   readonly foreground?: RuntimeOptions["foreground"];
   readonly onLocalControls?: (controls: LocalControls) => void;
-  /** Models to register. The real model list arrives with the SDK adapter (M1). */
+  /** Fixed models to register. Default: the account catalog, discovered with the lazy SDK. */
   readonly models?: ProviderSpec["models"];
   /** Receives the fixed refusal message when the host is unsupported. */
   readonly onRefusal?: (refusal: HostRefusal) => void;
@@ -49,12 +52,23 @@ export function createCursorPlugin(options: CursorPluginOptions = {}) {
       await host.value.sessionHook("model.request", (event) => stampModelRequest(event, PROVIDER_ID), {
         providerID: PROVIDER_ID,
       });
-      await registerProvider(host.value.registration, {
+      const catalog = options.models ? undefined : local?.catalog;
+      const registration = host.value.registration;
+      await registerProvider(registration, {
         id: PROVIDER_ID,
         name: "Cursor",
         package: factoryPackage(),
-        models: options.models ?? FALLBACK_SPECS,
+        models: options.models ?? (catalog ? () => catalog.specs() : FALLBACK_SPECS),
       });
+      const events = new AbortController();
+      if (catalog && registration.reload) {
+        // The transform reads catalog.specs() on every replay; reload() makes the host replay it.
+        const reload = registration.reload;
+        catalog.attach(async () => { if (!events.signal.aborted) await reload(); });
+        const discover = () => { void catalog.refresh().catch(() => {}); };
+        discover();
+        subscribeEvents(context, CONNECTION_EVENTS, events.signal, discover);
+      }
       // If no earlier hook supplied an SDK (internal dynamic loader absent), supply ours.
       await host.value.aisdkHook(
         "sdk",
@@ -74,7 +88,8 @@ export function createCursorPlugin(options: CursorPluginOptions = {}) {
         },
         { providerID: PROVIDER_ID },
       );
-      return local?.dispose;
+      if (!local) return;
+      return async () => { events.abort(); await local.dispose(); };
     },
   };
 }

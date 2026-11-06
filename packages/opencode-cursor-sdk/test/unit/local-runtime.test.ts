@@ -56,7 +56,8 @@ function fixture({ bridge = true, error = false, runOptions = undefined as Local
   const sdk: LocalSdkPort = {
     create: async (options) => { created.push(options); return { close, send }; },
     openStore: async () => ({ store: {} as LocalAgentStore, dispose }),
-    models: async () => [{ id: "fake", displayName: "Fake", parameters: [{ id: "fast", values: [{ value: "true" }] }], variants: [{ displayName: "fast", params: [{ id: "fast", value: "true" }] }] }],
+    models: async () => [{ id: "fake", displayName: "Fake", parameters: [{ id: "fast", values: [{ value: "false" }, { value: "true" }] }],
+      variants: [{ displayName: "slow", params: [{ id: "fast", value: "false" }], isDefault: true }, { displayName: "fast", params: [{ id: "fast", value: "true" }] }] }],
   };
   const loadSdk = vi.fn(async () => sdk);
   const runtime = createLocalRuntime({ cwd: "/fake", stateRoot: "/fake/state", getApiKey: async () => "fake-key", inspectSession: async () => ({ info, messages: compact }), loadSdk, ...(runOptions ? { getOptions: async () => runOptions } : {}) });
@@ -179,7 +180,8 @@ describe("local SDK execution and MCP continuation", () => {
   });
   it("does not invent unsupported model parameters", async () => {
     const f = fixture({ bridge: false });
-    await expect(collect(f.source(request({ providerOptions: { cursor: { params: { fast: "false" } } } })))).rejects.toMatchObject({ code: "configuration" });
+    await expect(collect(f.source(request({ providerOptions: { cursor: { params: { fast: "maybe" } } } })))).rejects.toMatchObject({ code: "configuration" });
+    await expect(collect(f.source(request({ providerOptions: { cursor: { params: { context: "1m" } } } })))).rejects.toMatchObject({ code: "configuration" });
     expect(f.created).toHaveLength(0);
   });
 });

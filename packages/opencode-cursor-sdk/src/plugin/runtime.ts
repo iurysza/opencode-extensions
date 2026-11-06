@@ -3,7 +3,8 @@ import type { Plugin } from "@opencode/plugin";
 import { composeLocal, resolveHostKey, type LocalPluginOptions } from "./local.js";
 import { registerControls } from "./control-rpc.js";
 import { REMOTE_ACK, type Scope, type SnapshotInput } from "../control-contract.js";
-import { FALLBACK_MODELS, FALLBACK_SPECS } from "../provider/local-runtime.js";
+import { findModel, resolveModelSelection } from "../provider/models.js";
+import { createModelCatalog } from "./catalog.js";
 import { helperUnavailable } from "../core/lanes.js";
 import { json } from "../core/bridge.js";
 import { parseHostSettings, resolveLocalRunOptions, type HostCursorSettings, type LocalRunOptions } from "../core/local-settings.js";
@@ -56,6 +57,8 @@ export async function composeRuntime(ctx: Plugin.Context, options: RuntimeOption
     return resolveLocalRunOptions(layers);
   };
   const local = await composeLocal(ctx, { ...options.local, getOptions: request => getOptions(request.context.sessionID, request.abortSignal) });
+  const catalog = createModelCatalog({ getApiKey: () => resolveHostKey(ctx, env), list: (key, force) => local.controls.models(key, { force }),
+    warn: options.local?.warn ?? (message => console.warn(message)) });
   const cloud = createForegroundCloudSource({
     cwd: ctx.location.directory, getConfig, getApiKey: () => resolveHostKey(ctx, env),
     isLocalRunPending: id => local.controls.status(id).pending,
@@ -64,18 +67,11 @@ export async function composeRuntime(ctx: Plugin.Context, options: RuntimeOption
       return session.id === sessionID && session.location.directory === ctx.location.directory && !("workspaceID" in session.location && session.location.workspaceID);
     }), ...options.foreground,
     selection: options.foreground?.selection ?? (request => {
-      const model = FALLBACK_MODELS.find(item => item.id === request.modelId);
-      const variant = request.context.model.variant;
-      const provider = record(request.providerOptions) ? request.providerOptions.cursor : undefined;
-      if (!model || variant && variant !== "default" || provider !== undefined && (!record(provider) || Object.keys(provider).some(key => key !== "params"))) throw new Error("Unsupported Cloud model selection.");
-      const explicit = record(provider) ? provider.params : undefined;
-      if (explicit !== undefined && !record(explicit)) throw new Error("Unsupported Cloud model parameters.");
-      const params = Object.entries(explicit ?? {}).map(([id, value]) => {
-        const parameter = model.parameters?.find(item => item.id === id);
-        if (typeof value !== "string" || !parameter?.values.some(item => item.value === value)) throw new Error("Unsupported Cloud model parameter.");
-        return { id, value };
-      });
-      return { model: { id: model.id, ...(params.length ? { params } : {}) }, mode: "agent" as const };
+      // Cloud accepts only models in the current (account or fallback) catalog.
+      const items = catalog.items();
+      const model = findModel(items, request.modelId) && resolveModelSelection(items, request.modelId, request.context.model.variant, request.providerOptions);
+      if (!model) throw new Error("Unsupported Cloud model selection.");
+      return { model, mode: "agent" as const };
     }),
   });
   async function status(id: string): Promise<SnapshotInput> {
@@ -130,7 +126,13 @@ export async function composeRuntime(ctx: Plugin.Context, options: RuntimeOption
   try {
     rpc = await registerControls(ctx, {
       status: ({ scope }) => status(scope.sessionID),
-      models: async () => ({ items: FALLBACK_SPECS.slice(0, 100).map(model => ({ id: model.id, state: "unknown" as const })) }),
+      models: async () => ({ items: catalog.specs().slice(0, 100).map(model => ({ id: model.id, state: "unknown" as const })) }),
+      refreshModels: async (_input, signal) => {
+        checkOpen(signal);
+        await catalog.refresh({ force: true });
+        checkOpen(signal);
+        return { items: catalog.specs().slice(0, 100).map(model => ({ id: model.id, state: "unknown" as const })) };
+      },
       ledger: async ({ scope }) => ({ items: (await cloud.list(scope.sessionID)).filter(item => item.agentID).slice(-100).map(item => ({
         id: item.agentID!, state: item.phase === "archived" ? "archived" as const : item.phase === "finished" ? "finished" as const : item.phase === "running" ? "running" as const : "unknown" as const,
       })) }),
@@ -168,7 +170,7 @@ export async function composeRuntime(ctx: Plugin.Context, options: RuntimeOption
     });
   } catch (error) { await local.dispose(); await cloud.shutdown(); throw error; }
   return {
-    lanes: { coding, helper: helperUnavailable }, controls: local.controls, foreground: cloud, getConfig, getOptions,
-    async dispose() { if (closed) return; closed = true; await Promise.all([local.dispose(), cloud.shutdown(), rpc!.dispose()]); },
+    lanes: { coding, helper: helperUnavailable }, controls: local.controls, foreground: cloud, getConfig, getOptions, catalog,
+    async dispose() { if (closed) return; closed = true; catalog.close(); await Promise.all([local.dispose(), cloud.shutdown(), rpc!.dispose()]); },
   };
 }

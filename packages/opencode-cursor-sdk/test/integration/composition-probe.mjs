@@ -24,7 +24,9 @@ for (const read of ["status", "models", "ledger"]) assert.equal((await sdk(read,
 assert.equal((await cloud("models", { scope })).code, "ok");
 assert.equal(records().filter(e => e.at.endsWith("create")).length, 0); checks.readsLazy = true;
 assert.equal((await sdk("status", { scope: { ...scope, location: { directory: project + "/wrong" } } })).code, "refused"); checks.scopeAndAuthorization = true;
-for (const [name, args] of [["fast", { enabled: true }], ["refreshModels", {}], ["http", { http: "auto" }], ["http", { http: "http1" }]]) assert.equal((await sdk(name, { scope, ...args })).code, "not_implemented");
+for (const [name, args] of [["fast", { enabled: true }], ["http", { http: "auto" }], ["http", { http: "http1" }]]) assert.equal((await sdk(name, { scope, ...args })).code, "not_implemented");
+const refreshedModels = await sdk("refreshModels", { scope });
+assert.equal(refreshedModels.code, "ok"); assert.deepEqual(refreshedModels.snapshot.items, [{ id: "composer-2.5", state: "unknown" }]);
 const mode = await sdk("mode", { scope, mode: "plan" });
 assert.equal(mode.code, "ok"); assert.equal(mode.snapshot.mode, "plan");
 const tools = await sdk("tools", { scope, tools: "bridge" });

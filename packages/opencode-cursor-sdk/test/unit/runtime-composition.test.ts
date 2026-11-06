@@ -59,6 +59,22 @@ async function fixture(pendingCloud = false, env: Record<string, string | undefi
     onRead: (hook?: () => Promise<void>) => { readHook = hook; }, onWrite: (hook?: () => Promise<void>) => { writeHook = hook; } };
 }
 describe("production runtime composition", () => {
+  it("refreshModels lists the account catalog with the host key and reports it through models", async () => {
+    const f = await fixture();
+    expect((await f.call("models")).snapshot).toMatchObject({ items: expect.arrayContaining([{ id: "auto-smart", state: "unknown" }]) });
+    const refreshed = await f.call("refreshModels");
+    expect(refreshed).toEqual({ code: "ok", snapshot: { items: [{ id: "composer-2.5", state: "unknown" }] } });
+    expect((await f.call("models")).snapshot).toEqual({ items: [{ id: "composer-2.5", state: "unknown" }] });
+    expect(f.runtime.catalog.source()).toBe("account");
+    expect(f.trace).not.toContain("local-create");
+    await f.runtime.dispose();
+  });
+  it("refreshModels fails honestly without a key and keeps the fallback", async () => {
+    const f = await fixture(false, { CURSOR_API_KEY: undefined });
+    expect((await f.call("refreshModels")).code).toBe("failed");
+    expect(f.runtime.catalog.source()).toBe("fallback");
+    await f.runtime.dispose();
+  });
   it("keeps reads SDK-free, routes local then Cloud with durable acknowledgment, resets idle pool", async () => {
     const f = await fixture();
     expect((await f.call("status")).code).toBe("ok"); expect((await f.call("models")).code).toBe("ok"); expect(f.trace).toEqual([]);
@@ -91,7 +107,7 @@ describe("production runtime composition", () => {
     const f = await fixture();
     expect((await f.call("runtime", { runtime: "cloud" })).code).toBe("refused");
     expect((await f.call("status", { scope: { sessionID: "ses_one", location: { directory: "/other" } } })).code).toBe("refused");
-    for (const [name, args] of [["fast", { enabled: true }], ["http", { http: "auto" }], ["http", { http: "http1" }], ["resumeCleanup", { enabled: true }], ["refreshModels", {}]] as const) expect((await f.call(name, args)).code).toBe("not_implemented");
+    for (const [name, args] of [["fast", { enabled: true }], ["http", { http: "auto" }], ["http", { http: "http1" }], ["resumeCleanup", { enabled: true }]] as const) expect((await f.call(name, args)).code).toBe("not_implemented");
     f.data.set(USER_SETTINGS_KEY, { runtime: "cloud", cloud: { acknowledged: true } });
     await expect(collect(f.runtime.lanes.coding(request))).rejects.toThrow("acknowledgment");
     expect(f.trace.filter(v => v.endsWith("create"))).toEqual([]); await f.runtime.dispose();

@@ -21,8 +21,8 @@ export interface HostRefusal {
 
 /** Provider registration path, detected by feature, not version (boundary 2.0.4). */
 export type RegistrationApi =
-  | { readonly _tag: "provider"; readonly transform: (callback: (editor: unknown) => void) => Promise<unknown> }
-  | { readonly _tag: "catalog"; readonly transform: (callback: (editor: unknown) => void) => Promise<unknown> };
+  | { readonly _tag: "provider"; readonly transform: (callback: (editor: unknown) => void) => Promise<unknown>; readonly reload?: () => Promise<void> }
+  | { readonly _tag: "catalog"; readonly transform: (callback: (editor: unknown) => void) => Promise<unknown>; readonly reload?: () => Promise<void> };
 
 export type AisdkHook = (
   name: "sdk" | "language",
@@ -54,6 +54,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const fn = (value: unknown): value is (...args: never[]) => unknown => typeof value === "function";
 const prop = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
+/**
+ * Public `event.subscribe`, read structurally: 2.0.0 has no `types` filter option, 2.2.5 does.
+ * Runs until `signal` aborts. Returns false when the host has no event domain.
+ */
+export function subscribeEvents(context: unknown, types: readonly string[], signal: AbortSignal, onEvent: (event: Record<string, unknown>) => void): boolean {
+  const domain = prop(context, "event");
+  const subscribe = prop(domain, "subscribe");
+  if (!fn(subscribe)) return false;
+  void (async () => {
+    try {
+      const stream = (subscribe as (options: unknown) => AsyncIterable<unknown>).call(domain, { types, signal });
+      for await (const event of stream) {
+        if (signal.aborted) return;
+        const type = prop(event, "type");
+        if (typeof type === "string" && types.includes(type)) onEvent(event as Record<string, unknown>);
+      }
+    } catch { /* Event loss only delays discovery until the next refresh or restart. */ }
+  })();
+  return true;
+}
+
 /** Major version of a host version string such as `2.0.0` or `2.2.5-beta.1`. */
 export function hostMajor(version: string): number | undefined {
   const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version);
@@ -70,10 +91,16 @@ export function parseHost(context: unknown): Result<HostCapabilities, HostRefusa
 
   const providerTransform = prop(prop(context, "provider"), "transform");
   const catalogTransform = prop(prop(context, "catalog"), "transform");
+  // Public `provider.reload` / `catalog.reload` re-run every registered transform (replaces our model list).
+  const reloadOf = (domain: string) => {
+    const owner = prop(context, domain);
+    const reload = prop(owner, "reload");
+    return fn(reload) ? { reload: () => (reload as () => Promise<void>).call(owner) } : {};
+  };
   const registration: RegistrationApi | undefined = fn(providerTransform)
-    ? { _tag: "provider", transform: providerTransform as RegistrationApi["transform"] }
+    ? { _tag: "provider", transform: providerTransform as RegistrationApi["transform"], ...reloadOf("provider") }
     : fn(catalogTransform)
-      ? { _tag: "catalog", transform: catalogTransform as RegistrationApi["transform"] }
+      ? { _tag: "catalog", transform: catalogTransform as RegistrationApi["transform"], ...reloadOf("catalog") }
       : undefined;
   if (!registration) return refuse("missing-registration");
 

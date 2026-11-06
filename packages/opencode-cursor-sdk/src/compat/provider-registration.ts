@@ -1,18 +1,15 @@
 import type { RegistrationApi } from "./host.js";
+import type { ModelSpec } from "../provider/models.js";
 
-export interface ModelSpec {
-  readonly id: string;
-  readonly name: string;
-  readonly context: number;
-  readonly output: number;
-}
+export type { ModelSpec };
 
 export interface ProviderSpec {
   readonly id: string;
   readonly name: string;
   /** AI SDK package string, `aisdk:` + module specifier with a `create*` export. */
   readonly package: string;
-  readonly models: readonly ModelSpec[];
+  /** A function is read on every host replay, so `reload()` publishes the current list. */
+  readonly models: readonly ModelSpec[] | (() => readonly ModelSpec[]);
 }
 
 /** Minimal structural editors, from `@opencode/plugin` 2.0.0 (`CatalogEditor`) and 2.0.4+ (`ProviderEditor`). */
@@ -32,7 +29,7 @@ export function modelInfo(provider: ProviderSpec, model: ModelSpec): Record<stri
     name: model.name,
     package: provider.package,
     capabilities: { tools: true, input: ["text"], output: ["text"] },
-    variants: [],
+    variants: (model.variants ?? []).map((id) => ({ id })),
     time: { released: 0 },
     cost: [],
     status: "active",
@@ -51,18 +48,19 @@ export function providerInfo(provider: ProviderSpec): Record<string, unknown> {
  * creates a missing model. From 2.0.4, `provider.add({ info, models })` registers both.
  */
 export function registerProvider(api: RegistrationApi, provider: ProviderSpec): Promise<unknown> {
+  const models = () => (typeof provider.models === "function" ? provider.models() : provider.models);
   if (api._tag === "provider") {
     return api.transform((editor) => {
       (editor as ProviderEditor).add({
         info: providerInfo(provider),
-        models: provider.models.map((model) => modelInfo(provider, model)),
+        models: models().map((model) => modelInfo(provider, model)),
       });
     });
   }
   return api.transform((editor) => {
     const catalog = editor as CatalogEditor;
     catalog.provider.update(provider.id, (info) => Object.assign(info, providerInfo(provider)));
-    for (const model of provider.models) {
+    for (const model of models()) {
       catalog.model.update(provider.id, model.id, (info) => Object.assign(info, modelInfo(provider, model)));
     }
   });
