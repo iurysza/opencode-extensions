@@ -38,6 +38,16 @@ describe("safe SDK error mapping", () => {
       "Connect it: https://cursor.com/integrations. Server: Connect GitHub to use this repo. Request: req-42.");
   });
 
+  it("gives a billing hint for usage_limit_exceeded", () => {
+    const text = cloudError(sdkError("ConfigurationError", "[usage_limit_exceeded] Your prepaid balance is used up. Add funds or enable auto top-up in your billing settings to keep going.", {
+      code: "usage_limit_exceeded", status: 400, requestId: "req-7" }), "send", KEY);
+    expect(text).toContain("usage limit reached (usage_limit_exceeded, HTTP 400).");
+    expect(text).toContain("Add funds or enable auto top-up in Cursor billing settings.");
+    expect(text).toContain("Server: Your prepaid balance is used up.");
+    expect(text).not.toContain("repository URL");
+    expect(text).not.toContain("Check the model, repository");
+  });
+
   it("drops unsafe help URLs and unsafe request IDs", () => {
     const text = cloudError(sdkError("ConfigurationError", "nope", { helpUrl: `https://user:${KEY}@evil.example/`, requestId: `id ${KEY}` }), "send", KEY);
     expect(text).not.toContain(KEY); expect(text).not.toContain("Help:"); expect(text).not.toContain("Request:");

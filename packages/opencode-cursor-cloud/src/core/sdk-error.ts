@@ -15,6 +15,8 @@ const kinds: Record<string, { summary: string; hint: string }> = {
   AgentNotFoundError: { summary: "agent not found", hint: "The agent does not exist on Cursor. Start a new agent." },
   UnknownAgentError: { summary: "unexpected Cursor error", hint: "Check Cursor service status and retry." },
 };
+// Billing is keyed by code, not name: Cursor sends it as a ConfigurationError.
+const billing = { summary: "usage limit reached", hint: "Add funds or enable auto top-up in Cursor billing settings." };
 const providers: Record<string, string> = { github: "GitHub", gitlab: "GitLab", bitbucket: "Bitbucket", azure: "Azure DevOps" };
 
 const field = (error: object, key: string): unknown => Reflect.get(error, key);
@@ -61,7 +63,10 @@ export function describeSdkError(error: unknown, operation: string, key = ""): s
 
   const url = helpUrl(field(error, "helpUrl"), key);
   let summary = kind.summary, hint = kind.hint;
-  if (error.name === "IntegrationNotConnectedError" || safeCode === "integration_not_connected") {
+  if (safeCode === "usage_limit_exceeded") {
+    ({ summary, hint } = billing);
+    if (url) hint += ` Help: ${url}.`;
+  } else if (error.name === "IntegrationNotConnectedError" || safeCode === "integration_not_connected") {
     const provider = field(error, "provider");
     const label = typeof provider === "string" && /^[\w-]{1,32}$/.test(provider) ? providers[provider.toLowerCase()] ?? provider : "Repository";
     summary = `${label} integration not connected`;
