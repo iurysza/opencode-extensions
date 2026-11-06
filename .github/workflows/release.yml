@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ vars.RELEASE_AUTOMATION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Validate release ownership and tag before checkout
+        id: metadata
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const event = context.payload;
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            if (event.repository?.full_name !== repository || event.repository.default_branch !== 'main') {
+              throw new Error('Release must belong to this repository and its main branch');
+            }
+            const { data: release } = await github.rest.repos.getRelease({ ...context.repo, release_id: event.release.id });
+            const { data: repo } = await github.rest.repos.get({ ...context.repo });
+            const tag = release.tag_name;
+            if (repo.full_name !== repository || repo.default_branch !== 'main' ||
+                release.id !== event.release.id || tag !== event.release.tag_name ||
+                release.draft || release.prerelease || !release.published_at) {
+              throw new Error('Release metadata does not match a published stable release owned by this repository');
+            }
+            if (typeof tag !== 'string' || !/^opencode-cursor-(sdk|cloud)-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$(?![\s\S])/.test(tag)) {
+              throw new Error('Unknown component tag or noncanonical stable version');
+            }
+            const { data: commit } = await github.rest.repos.getCommit({ ...context.repo, ref: `refs/tags/${tag}` });
+            const fullSHA = /^[0-9a-f]{40}$(?![\s\S])/;
+            if (typeof commit.sha !== 'string' || !fullSHA.test(commit.sha)) {
+              throw new Error('Resolved tag commit must be a canonical full SHA');
+            }
+            const target = release.target_commitish;
+            if (target !== 'main' && (typeof target !== 'string' || !fullSHA.test(target) || target !== commit.sha)) {
+              throw new Error('Release target must be main or the exact resolved tag commit SHA');
+            }
+            core.setOutput('tag', tag);
+            core.setOutput('sha', commit.sha);
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.metadata.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact release commit belongs to main
+        env:
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+          RELEASE_SHA: ${{ steps.metadata.outputs.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test "$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$RELEASE_SHA"
+          git merge-base --is-ancestor "$RELEASE_SHA" refs/remotes/origin/main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.3
+          registry-url: https://registry.npmjs.org
+      - name: Refuse root, private children, mismatched tags and versions
+        env:
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+        run: node scripts/release-check.mjs production
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm run check
+      - run: node --test scripts/release-*.test.mjs
+      - name: Pack and inspect only the released component without npm credentials
+        id: artifact
+        env:
+          RELEASE_TAG: ${{ steps.metadata.outputs.tag }}
+        run: node scripts/release-check.mjs production-pack
+      - name: Publish the inspected tarball with public access and provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TARBALL: ${{ steps.artifact.outputs.tarball }}
+        run: |
+          test -n "$NODE_AUTH_TOKEN"
+          test -f "$TARBALL"
+          npm publish "$TARBALL" --ignore-scripts --workspaces=false --access public --provenance --registry https://registry.npmjs.org

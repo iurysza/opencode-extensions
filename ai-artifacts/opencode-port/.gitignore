@@ -1,0 +1,3 @@
+# Source clones are local evidence caches, not vendored artifacts.
+research/sources/
+research/*.log

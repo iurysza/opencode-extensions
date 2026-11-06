@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tgz
+.DS_Store
+*.tsbuildinfo
+# Downloaded OpenCode CLI binaries, isolated HOME/XDG trees and probe runtime data.
+.fixtures/
+# Child lockfiles are forbidden; only the root package-lock.json is tracked.
+packages/*/package-lock.json

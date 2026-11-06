@@ -1,0 +1,100 @@
+import { describe, expect, it } from "vitest";
+import { controls, parse, displayText, type Scope } from "../../src/control-contract.js";
+import { registerControls, type ControlContext } from "../../src/plugin/control-rpc.js";
+
+const scope: Scope = { sessionID: "ses_test", location: { directory: "/fixture", workspaceID: undefined } };
+function host(location = "/fixture", sessionLocation = "/fixture", workspaceID?: string) {
+  let handlers: Record<string, (input: unknown, call: { signal: AbortSignal }) => Promise<unknown>> = {};
+  const events: unknown[] = [];
+  let disposed = false;
+  const ctx = {
+    location: { directory: location, workspaceID },
+    session: { get: async ({ sessionID }: { sessionID: string }) => {
+      if (sessionID === "ses_missing") throw new Error("not found");
+      return { id: sessionID, location: { directory: sessionLocation } };
+    } },
+    rpc: { register: async (_definition: unknown, implementation: typeof handlers) => {
+      handlers = implementation;
+      return { dispose: async () => { disposed = true; }, events: { emit: async (...args: unknown[]) => { events.push(args); } } };
+    } },
+  } as unknown as ControlContext; // Deliberately minimal fake host, not real-host evidence.
+  return { ctx, events, disposed: () => disposed,
+    call: (method: string, input: unknown, signal = new AbortController().signal) => handlers[method]!(input, { signal }) };
+}
+
+describe("fixed controls", () => {
+  it("has no arbitrary execution or credential method", () => {
+    expect(Object.keys(controls.methods)).toEqual(["status", "models", "ledger", "spawn", "followup", "cancel", "delete"]);
+    for (const method of Object.values(controls.methods)) {
+      expect(() => parse(method.input, { scope, apiKey: "forbidden" })).toThrow();
+      expect(() => parse(method.input, { scope: { ...scope, location: { directory: "relative" } } })).toThrow();
+    }
+    expect(displayText("\x1b[31mhello\x1b[0m\x07\u202etoken=not-for-display")).toBe("hello[redacted]");
+  });
+  it("fails closed on missing actions, sessions and location mismatches", async () => {
+    const h = host(); const registration = await registerControls(h.ctx, {});
+    expect(await h.call("status", { scope })).toMatchObject({ code: "not_implemented" });
+    expect(await h.call("status", { scope: { ...scope, sessionID: "ses_missing" } })).toMatchObject({ code: "refused" });
+    expect(await h.call("status", { scope: { ...scope, location: { directory: "/other" } } })).toMatchObject({ code: "refused" });
+    expect(await h.call("status", { scope: { ...scope, location: { directory: "/fixture", workspaceID: "wrk_remote" } } })).toMatchObject({ code: "refused" });
+    const moved = host("/fixture", "/other"); await registerControls(moved.ctx, { status: async () => ({ state: "running" }) });
+    expect(await moved.call("status", { scope })).toMatchObject({ code: "refused" });
+    const remote = host("/fixture", "/fixture", "wrk_remote"); await registerControls(remote.ctx, {});
+    expect(await remote.call("status", { scope })).toMatchObject({ code: "refused" });
+    await registration.dispose(); expect(h.disposed()).toBe(true);
+  });
+  it("projects replies and suppresses raw action exceptions and secret IDs", async () => {
+    const h = host(); await registerControls(h.ctx, { status: async () => ({ state: "running", apiKey: "do-not-expose" }) });
+    const reply = await h.call("status", { scope });
+    expect(reply).toMatchObject({ code: "ok", snapshot: { state: "running" } });
+    expect(JSON.stringify(reply)).not.toContain("do-not-expose");
+    expect(h.events).toEqual([]); // A read never emits a mutation event.
+    const bad = host(); await registerControls(bad.ctx, { status: async () => ({ items: [{ id: "sk-secretsecret123", state: "running" }] }) });
+    expect(await bad.call("status", { scope })).toMatchObject({ code: "failed" });
+    const error = host(); await registerControls(error.ctx, { status: async () => { throw new Error("apiKey=do-not-expose"); } });
+    expect(await error.call("status", { scope })).toEqual({ code: "failed", snapshot: undefined });
+  });
+  it("keeps explicit action refusals honest and bounds replies", async () => {
+    for (const [refused, code] of [["scope", "refused"], ["unavailable", "not_implemented"]] as const) {
+      const h = host(); await registerControls(h.ctx, { status: async () => ({ refused }) });
+      expect(await h.call("status", { scope })).toMatchObject({ code }); expect(h.events).toEqual([]);
+    }
+    const oversized = host(); await registerControls(oversized.ctx, { status: async () => ({ items: Array.from({ length: 101 }, () => ({ id: "fixture", state: "running" })) }) });
+    expect(await oversized.call("status", { scope })).toMatchObject({ code: "failed" });
+    const h = host(); let called = false;
+    const registration = await registerControls(h.ctx, { status: async () => { called = true; } });
+    await registration.dispose(); await registration.publish(scope);
+    expect(await h.call("status", { scope })).toMatchObject({ code: "aborted" });
+    expect(called).toBe(false); expect(h.events).toEqual([]);
+  });
+  it("propagates call abort and unload to in-flight actions", async () => {
+    for (const unload of [false, true]) {
+      const h = host(); let started!: () => void;
+      const ready = new Promise<void>(resolve => { started = resolve; });
+      let aborted = false;
+      const registration = await registerControls(h.ctx, { status: async (_input, signal) => {
+        started();
+        await new Promise<void>(resolve => signal.addEventListener("abort", () => { aborted = true; resolve(); }, { once: true }));
+      } });
+      const controller = new AbortController();
+      const call = h.call("status", { scope }, controller.signal); await ready;
+      if (unload) await registration.dispose(); else controller.abort();
+      expect(await call).toMatchObject({ code: "aborted" }); expect(aborted).toBe(true); expect(h.events).toEqual([]);
+    }
+  });
+  it("bounds billable requests and requires cancel/delete confirmation", async () => {
+    const h = host(); let count = 0;
+    await registerControls(h.ctx, { spawn: async () => { count++; }, cancel: async () => {}, delete: async () => {} });
+    const input = { scope, prompt: "fixture task", repository: "https://github.com/fixture/repo" };
+    expect(await h.call("spawn", { ...input, prompt: "x".repeat(16001) })).toMatchObject({ code: "invalid_input" });
+    expect(await h.call("spawn", { ...input, repository: "https://github.com/fixture/repo?token=hidden" })).toMatchObject({ code: "invalid_input" });
+    expect(await h.call("spawn", { ...input, prompt: "api_key=hidden" })).toMatchObject({ code: "invalid_input" });
+    expect(count).toBe(0);
+    expect(await h.call("spawn", input)).toMatchObject({ code: "ok" });
+    expect(count).toBe(1); expect(h.events).toEqual([["status", { scope, state: "changed" }]]);
+    for (const method of ["cancel", "delete"]) {
+      expect(await h.call(method, { scope, id: "bc-fixture" })).toMatchObject({ code: "invalid_input" });
+      expect(await h.call(method, { scope, id: "bc-fixture", confirmed: true })).toMatchObject({ code: "ok" });
+    }
+  });
+});

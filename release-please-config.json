@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bump-minor-pre-major": true,
+  "separate-pull-requests": false,
+  "plugins": ["node-workspace"],
+  "packages": {
+    "packages/opencode-cursor-sdk": {
+      "release-type": "node",
+      "package-name": "@iurysza/opencode-cursor-sdk",
+      "component": "opencode-cursor-sdk",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true,
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/opencode-cursor-cloud": {
+      "release-type": "node",
+      "package-name": "@iurysza/opencode-cursor-cloud",
+      "component": "opencode-cursor-cloud",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true,
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

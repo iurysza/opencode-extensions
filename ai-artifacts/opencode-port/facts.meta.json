@@ -1,0 +1,443 @@
+[
+	{
+		"id": "F-01",
+		"text": "Both packages get the Cursor API key through the public OpenCode `integration` `key` and `env` methods. One order applies on every surface (model discovery, turns, lifecycle commands, Cloud tools): the key stored by the host integration first, then `CURSOR_API_KEY`. Pi's per-surface order is not copied. The packages use no v1 `auth` hook and no API absent at 2.0.0 (`external` method, `ctx.credential`). If setup answers are used, the 2.1.0 move from `configuration` to `metadata` goes through a compat module. Connection status uses `integration.connection.status` from 2.0.20, and an RPC event plus a toast before.",
+		"comment": "Verify (accepted label): Auto (precedence matrix at minimum and latest)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-02",
+		"text": "Neither package reads, prints, copies or migrates `~/.pi/agent/auth.json`, `PI_CODING_AGENT_DIR` or Cursor CLI or Desktop credentials.",
+		"comment": "Verify (accepted label): Auto (file-access spy) and code review The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-03",
+		"text": "Team Admin keys and missing keys fail with a fixed message that contains no key material.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-04",
+		"text": "The model list comes from `Cursor.models.list`. When that call fails, the package uses the stale cache, then a bundled fallback catalog, and shows a warning.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-05",
+		"text": "Context, fast and supported reasoning variants map to an SDK `ModelSelection` both at agent creation and on each send. Unsupported parameters are not invented. A model change starts a new Cursor agent.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-06",
+		"text": "Each Cursor native tool call reaches OpenCode as a V3 `tool-call` and exactly one `tool-result` with `providerExecuted: true`, under a collision-safe Cursor name such as `cursor_read`. The name is identical across input start, call and result.",
+		"comment": "Verify (accepted label): Auto (mock gate, matrix)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-07",
+		"text": "OpenCode never runs a native Cursor tool call again: not in the same turn, on replay in the next turn, after a restart or after compaction (`providerState` before 2.1.0, `native` from 2.1.0).",
+		"comment": "Verify (accepted label): Auto (spy on every OpenCode tool executor)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-08",
+		"text": "A turn that contains only provider-executed calls ends with exactly one valid V3 `finish` part, so OpenCode does not continue the loop. The adapter never emits a duplicate or invalid finish, a duplicate success result, a result before its call, or a missing hosted result.",
+		"comment": "Verify (accepted label): Auto (one test per host failure shape)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-09",
+		"text": "A native call whose name matches an OpenCode tool but whose input fails that tool's schema is not rewritten into a local call.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-10",
+		"text": "When Cursor calls a bridged OpenCode tool, the provider emits a non-provider-executed call. OpenCode runs it once, through its normal tool and permission pipeline. The result goes back to the same open Cursor run. How the provider correlates the MCP call with Cursor's tool-call ID is open in G2.",
+		"comment": "Verify (accepted label): Auto (mock gate)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-11",
+		"text": "One turn can mix provider-executed native calls and real bridge calls. Native calls are recorded and never run. Bridge calls run exactly once.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-12",
+		"text": "A missing or structurally malformed bridge result fails closed. The pending MCP call gets an explicit error. A valid result with empty output remains valid. The package never invents a successful result.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-13",
+		"text": "An HTTP bridge listens on loopback only: non-loopback requests get 403, unknown paths get 404, and disposed runs get 410. An in-process bridge is allowed only if G2 proves the same permission, run-isolation and disposal boundaries without a listener.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-14",
+		"text": "Our `session.hook(\"model.request\")`, filtered to the Cursor provider, reads the public `kind` (`primary`, `title`, `compaction`, `generate`) and writes private session and purpose headers. The provider reads only those headers, never host `X-Session-Id`, which carries affinity from 2.0.21. An empty tool list never counts as a purpose signal.",
+		"comment": "Verify (accepted label): Auto (each kind at minimum and latest)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-15",
+		"text": "A helper request uses a fresh Cursor context, with no pooled coding agent and no coding transcript beyond the input OpenCode supplies.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-16",
+		"text": "Every non-primary kind runs only in the local helper lane (`Agent.create({ tools: [] })`, no MCP, no `customTools`, no `task`, never the coding pool, never a Cloud helper) or on a separately approved non-Cursor model. If neither is available, it refuses to start.",
+		"comment": "Verify (accepted label): Auto (T1 routing), T2 probe and Manual (T3) for text-only behavior The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact. Any T3 or paid live run needs Iury's separate explicit approval.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-17",
+		"text": "A request with a missing, invalid or unknown stamp is rejected before any Cursor run starts. The provider never guesses that an unidentified request is a coding turn.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-18",
+		"text": "OpenCode's `abortSignal` cancels the Cursor run and any pending bridge call. Afterwards, no MCP request is left pending.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-19",
+		"text": "An abort during a pending MCP tool call leaves the OpenCode tool part interrupted. The next turn starts cleanly.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-20",
+		"text": "Auth, network, stall, abort and overflow errors map to OpenCode 2.x retry and compaction behavior. Throttle errors are never classified as overflow.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-21",
+		"text": "Error messages, logs and stderr never contain the API key, auth headers or URL userinfo.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-22",
+		"text": "Each OpenCode session has its own Cursor agent and its own SDK store, keyed by the session ID from our stamp. Two parallel sessions never share either one.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-23",
+		"text": "A fork, a model change or a compaction resets the Cursor agent and increments a compaction generation. The next send is a full bootstrap. The `model.request` hook does not carry fork lineage, so how lineage is observed is part of G3.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-24",
+		"text": "Local resume after a restart reuses a Cursor agent only when the session, cwd, pool key, store and compaction generation all match. Otherwise the provider starts fresh and shows a notice.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-25",
+		"text": "Cloud runtime is off by default. Turning it on needs a one-time acknowledgment that covers remote execution, billing and the loss of local tools. Cancelling the acknowledgment writes no state.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-26",
+		"text": "Preflight runs the full Git local-state probe from Pi before `Agent.create`. It rejects bad repos and refs, a branch with no tracking ref, unpushed commits, dirty state and ambiguous remotes. The only bypass is an explicit `allow-local-state` override. Requiring that override in place of the probe is not acceptable.",
+		"comment": "Verify (accepted label): Auto (port the 56-case probe matrix)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-27",
+		"text": "The agent intent is persisted durably before send. The run ID is persisted before waiting. If persistence fails, nothing is sent, or the run is cancelled.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-28",
+		"text": "Archive and delete accept only recorded `bc-` IDs. Each records a durable intent before the SDK call and a result after it. An unresolved intent blocks retries.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-29",
+		"text": "Spawn returns before the remote prompt finishes. A follow-up sent while the agent is starting or running is rejected.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-30",
+		"text": "Each observed completion gets one durable receipt before the first `session.synthetic` call. The receipt holds one host-valid `msg_` message ID (minted once, never a hash of agent or run IDs), the originating session ID, the immutable text, a text hash and agent and run metadata. There is no part ID. The completion reaches the originating session, even when that session is busy or another session is active.",
+		"comment": "Verify (accepted label): Auto (busy session and multi-session cases)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-31",
+		"text": "Duplicate terminal events, late stream events, retries and process restarts never produce a second stored synthetic message for one receipt. The package guarantees deduplicated notification admission that it controls, not exactly-once assistant execution: host restart recovery is at-least-once and may rerun interrupted model work. The host matches admission on ID, session and type only, so the package rejects any retry whose text hash differs from its receipt and never replays a receipt blindly.",
+		"comment": "Verify (accepted label): Auto (G5 spike list)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-32",
+		"text": "Cancel and delete work only on agents that this process created. Delete refuses an active agent. Receipt recovery never lists, polls, adopts or attaches remote agents.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-33",
+		"text": "Shutdown detaches from agents and never cancels remote work. New actions after shutdown fail.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-34",
+		"text": "The default ref uses the current branch only when `refs/remotes/origin/<branch>` exists. Otherwise it falls back to `main`. The launch notice says Cloud sees the remote ref, not local or unpushed commits.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-35",
+		"text": "Only GitHub HTTPS and SSH repos are accepted. Userinfo, look-alike hosts and local paths are rejected.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-36",
+		"text": "Both packages work headless (`opencode run` and server mode) without loading TUI code, at the minimum version, at each API boundary in the matrix, at the pinned latest and at the latest 2.x.",
+		"comment": "Verify (accepted label): Auto (T1 matrix)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-37",
+		"text": "The TUI shows Cloud status in a host slot (such as `sidebar.content` or `prompt.footer.status`), and shows pickers and confirmations in dialogs. Each TUI entry passes its OpenTUI line.",
+		"comment": "Verify (accepted label): Manual, plus Auto load test per TUI entry The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-38",
+		"text": "Spawn, cancel, delete and other billable or destructive actions run through deterministic code: a TUI command that calls a fixed backend RPC method, or a tool with fixed arguments. They never run through prompt templates that a language model interprets. The TUI never holds its own Cursor client.",
+		"comment": "Verify (accepted label): Auto (command-path test) and code review The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-39",
+		"text": "Every UI gap from Pi, such as inline tidy cards, is listed in the README with its equivalent or its upstream dependency. No exact card parity is claimed, because 2.x has no transcript slot.",
+		"comment": "Verify (accepted label): Manual",
+		"recommendedAutomatedVerification": false,
+		"automatedVerification": false
+	},
+	{
+		"id": "F-40",
+		"text": "The README states that Cursor native tools bypass OpenCode's permission prompts. It also states that SDK sandbox and autoReview are Cursor controls, not OpenCode enforcement.",
+		"comment": "Verify (accepted label): Manual",
+		"recommendedAutomatedVerification": false,
+		"automatedVerification": false
+	},
+	{
+		"id": "F-41",
+		"text": "Sensitive project-level overrides (runtime, repo, safety) fail closed until OpenCode has a trust API.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-42",
+		"text": "Untrusted terminal text from Cursor is cleaned of control sequences before display.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-43",
+		"text": "The port changes nothing in `packages/pi-cursor-sdk`, `packages/pi-cursor-cloud` or `packages/pi-ext`. The Pi test suites still pass.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-44",
+		"text": "Startup does not import `@cursor/sdk` eagerly. Loading either package has no silent side effects.",
+		"comment": "Verify (accepted label): Auto (import-graph test)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-45",
+		"text": "Each package keeps its upstream MIT notice and provenance. Neither package contains a secret.",
+		"comment": "Verify (accepted label): Auto (pack check) and review The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-46",
+		"text": "Before `Agent.create`, the provider checks that the session is persisted and the ledger is writable. If either check fails, no remote agent is created. Pi does not do this today (gap D1).",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-47",
+		"text": "Env forwarding stays rejected. No flag, env var, config key or alias can turn it on.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-48",
+		"text": "The Cloud acknowledgment can come from an explicit one-shot control, env, session or user scope. Pi's CLI flag maps to these OpenCode controls, not a new OpenCode CLI flag. Project config can never grant it. Without a UI, Cloud without an acknowledgment is refused.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-49",
+		"text": "Settings follow Pi's per-field precedence and safety caps. An invalid explicit value fails closed and never falls through to a lower layer.",
+		"comment": "Verify (accepted label): Auto (port `cursor-config.test.ts` cases)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-50",
+		"text": "Context handoff defaults to `fresh`. `bootstrap` sends full context. `never` fails preflight when prior context exists.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-51",
+		"text": "PR controls, direct push and environment fields are sent to the SDK only when set.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-52",
+		"text": "Cloud usage is display-only and never enters OpenCode token, cost or compaction accounting.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-53",
+		"text": "In Cloud runtime, the skill tool is inactive, and ask-question guidance is not in the prompt.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-54",
+		"text": "Cloud refuses to start while a local live run is pending in the same session.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-55",
+		"text": "Cloud behavior evidenced only against `@cursor/sdk` 1.0.23 is requalified against the pinned version before release (gate G7).",
+		"comment": "Verify (accepted label): Manual (paid, separately approved) Any T3 or paid live run needs Iury's separate explicit approval.",
+		"recommendedAutomatedVerification": false,
+		"automatedVerification": false
+	},
+	{
+		"id": "F-56",
+		"text": "`@cursor/sdk` is a normal npm dependency. No package tarball contains vendored or re-bundled SDK code. Publishing waits for Iury's review of the Cursor terms (G8).",
+		"comment": "Verify (accepted label): Auto (pack content check) and manual terms review The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-57",
+		"text": "Under OpenCode's Bun runtime, which loads the SDK's `connect-web` build, auth, network, stall and abort errors are classified correctly, and bridge calls are not cut off at 60 s.",
+		"comment": "Verify (accepted label): T2 probe for offline shapes and a local MCP stall. Manual (T3) for anything that needs Cursor's network. The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact. Any T3 or paid live run needs Iury's separate explicit approval.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-58",
+		"text": "Receipt state moves `observed` → `admitted` → `delivered`. One queue runs per session. Before every retry, the package reconciles the host `synthetic` message with the receipt ID, any `session.inbox.delivered` event and the current receipt. A promoted or delivered receipt is never admitted again. The package records admission and delivery separately. Answer status is `unknown` unless the host offers direct evidence. A later assistant message by `seq` or a busy status is never proof, because 2.x has no `parentID` and unrelated prompts can come between. No provider-specific stamping or correlation is required. Ambiguous acknowledgment or a crash before wake keeps the state and shows a diagnostic. Nothing is replayed blindly. Recovery covers only completions this process observed.",
+		"comment": "Verify (accepted label): Auto (G5 spike list: crashes, restart, `resume: false`, reverted and deleted sessions, intervening prompts)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-59",
+		"text": "Backend RPC methods (`rpc.register`) are reached through the server's `rpc.call` and the TUI `ctx.client`. Tests show server authorization applies, each call binds to one session and location, schemas are fixed and bounded, status is read-only, aborts propagate, push events reach the TUI, and no response or event carries a secret. A loopback adapter is built only if RPC fails G6, and then must meet its own token, permission, binding and shutdown conditions.",
+		"comment": "Verify (accepted label): Auto (security tests)",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-60",
+		"text": "A TUI attached to a supported local backend works over the same RPC and passes the same tests. It is not treated as a remote workspace. When `ctx.location.workspaceID` is set, the Cursor provider fails closed with a clear message unless that case is separately proven safe. No topology starts a second Cursor owner or forwards secrets.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-61",
+		"text": "Every Pi local command and flag has a mapped OpenCode surface or a stated drop, as listed in the feature map. Pi CLI flags become plugin options, env or TUI keymap commands over RPC, because plugins cannot add OpenCode CLI flags.",
+		"comment": "Verify (accepted label): Auto (mapping test) and review The manual, review or T3 part stays mandatory. Automated checks alone do not satisfy this fact.",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-62",
+		"text": "The model cache is a 0600 file keyed by a hash of the API key, never the key. Fresh reads require a matching key and TTL (24 h default). Any invalid item rejects the whole file.",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	},
+	{
+		"id": "F-63",
+		"text": "Local resume cleanup deletes only recorded `agent-*` IDs, writes a durable intent before `Agent.delete` and a result after, and deletes only with an explicit confirmation (Pi: `--yes`).",
+		"comment": "Verify (accepted label): Auto",
+		"recommendedAutomatedVerification": true,
+		"automatedVerification": true
+	}
+]

@@ -1,0 +1,55 @@
+{
+  "name": "@iurysza/opencode-cursor-cloud",
+  "version": "0.0.0",
+  "description": "OpenCode 2.x background Cursor Cloud delegation. Completion receipts only so far (milestone M4).",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./completion": "./dist/plugin/completion.js",
+    "./receipts": "./dist/core/receipts.js",
+    "./server": "./dist/server.js",
+    "./tui": "./dist/tui.js",
+    ".": "./dist/server.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@opencode/plugin": ">=2.0.0 <3",
+    "@opentui/solid": ">=0.5.10 <0.9",
+    "@opentui/core": ">=0.5.10 <0.9",
+    "solid-js": ">=1.9.0 <2"
+  },
+  "peerDependenciesMeta": {
+    "@opencode/plugin": {
+      "optional": true
+    },
+    "@opentui/solid": {
+      "optional": true
+    },
+    "@opentui/core": {
+      "optional": true
+    },
+    "solid-js": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.min.json",
+    "test": "vitest run test/unit",
+    "test:host": "node test/t1/run-receipts.mjs",
+    "test:hosttools": "node test/t1/run-cloud-tools.mjs"
+  },
+  "dependencies": {
+    "@cursor/sdk": "1.0.37"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
+  }
+}
