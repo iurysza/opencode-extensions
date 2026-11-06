@@ -18,8 +18,15 @@ export type Status =
   | { type: "failed"; error: string; result: Outcome; endedAt: number }
   | { type: "cancelled"; result: Outcome; endedAt: number };
 
+/**
+ * SDK 1.0.37 mints `bc-` IDs locally; Cursor creates the agent on the first successful send.
+ * pending: first send in flight. created: a send returned a run. never: the first send failed.
+ */
+export type Remote = "pending" | "created" | "never";
+
 export interface CloudAgent {
   id: string;
+  remote: Remote;
   name: string;
   description: string;
   repo: string;
@@ -75,10 +82,12 @@ export function reduce(state: State, event: Event): State {
     }
     if (!isActive(agent)) return agent;
     switch (event.type) {
-      case "running": return { ...agent, status: { type: "running", runId: event.runId } };
+      case "running": return { ...agent, remote: "created", status: { type: "running", runId: event.runId } };
       case "finished": return { ...agent, status: { type: "idle", result: event.result, endedAt: event.now }, activity: "finished" };
       case "cancelled": return { ...agent, status: { type: "cancelled", result: event.result, endedAt: event.now }, activity: "cancelled" };
-      case "error": return { ...agent, status: { type: "failed", error: event.error, result: event.result, endedAt: event.now }, activity: event.error };
+      // An error before any run means the first send failed, so Cursor never created the agent.
+      case "error": return { ...agent, remote: agent.remote === "pending" ? "never" : agent.remote,
+        status: { type: "failed", error: event.error, result: event.result, endedAt: event.now }, activity: event.error };
       case "delta":
       case "step": {
         const update = event.activity;

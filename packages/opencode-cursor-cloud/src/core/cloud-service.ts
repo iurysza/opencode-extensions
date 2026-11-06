@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { CloudClient, CloudHandle, CloudRun } from "./cloud-client.js";
 import { cloudError } from "./cloud-client.js";
 import { resolveRepo } from "./repo.js";
-import { agentUrl, cleanText, formatCompletion, formatList, singleLine } from "./render.js";
+import { agentUrl, cleanText, formatCompletion, formatList, NEVER_CREATED, singleLine } from "./render.js";
 import { err, ok, type Result } from "./result.js";
 import type { ReceiptService } from "./receipts.js";
 import { elapsedMs, isActive, reduce, shortId, type CloudAgent, type Event, type State } from "./state.js";
@@ -141,7 +141,7 @@ export function createCloudService(options: CloudServiceOptions): CloudService {
       if (!/^bc-[\w-]+$/.test(handle.id) || handles.has(handle.id)) { close(handle); throw new Refusal("Cursor Cloud returned an invalid or duplicate agent ID."); }
       handles.set(handle.id, handle);
       owners.set(handle.id, sessionID);
-      const agent: CloudAgent = { id: handle.id, name, description: cleanText(params.prompt), ...resolved, model, startedAt: now(),
+      const agent: CloudAgent = { id: handle.id, remote: "pending", name, description: cleanText(params.prompt), ...resolved, model, startedAt: now(),
         status: { type: "starting" }, activity: "starting…", text: "", tools: 0, toolCallIds: [] };
       dispatch({ type: "spawned", agent });
       startRun(sessionID, agent, handle, params.prompt);
@@ -151,6 +151,7 @@ export function createCloudService(options: CloudServiceOptions): CloudService {
       requireText(prompt, "prompt", 100_000);
       const agent = find(sessionID, id);
       if (deleting.has(agent.id)) throw new Refusal("Cloud agent deletion is in progress.");
+      if (agent.remote === "never") throw new Refusal(NEVER_CREATED);
       if (isActive(agent)) throw new Refusal("Agent already has an active run. Wait until it is idle before sending a follow-up.");
       const handle = handles.get(agent.id);
       if (!handle) throw new Refusal("Cloud agent handle is unavailable. Start a new agent.");

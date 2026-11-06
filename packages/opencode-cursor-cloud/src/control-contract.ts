@@ -60,7 +60,7 @@ export const scopeSchema = object({ sessionID: id, location: locationSchema });
 // Infer without depending on the host's Schema or branded ID types.
 export type SchemaValue<S> = S extends ValueSchema<infer T> ? T : never;
 export type Scope = SchemaValue<typeof scopeSchema>;
-const state = choice("idle", "running", "finished", "failed", "cancelled", "archived", "unknown");
+const state = choice("idle", "running", "finished", "failed", "cancelled", "archived", "unknown", "not_created");
 const item = object({ id, state });
 const items = schema<SchemaValue<typeof item>[]>(v => {
   if (!Array.isArray(v) || v.length > 100) throw 0;

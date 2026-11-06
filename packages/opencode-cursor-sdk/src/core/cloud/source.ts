@@ -6,6 +6,7 @@ import { buildCursorCloudAgentOptions, preflightCursorCloudRuntime } from "./opt
 import { CloudRuntimeError, pendingIntent, prepareCloudRecord, readCloudLedger, validCloudAgentID, writeCloudRecord,
   type CloudRecord, type ForegroundCloudStore } from "./ledger.js";
 import { createCloudTextSanitizer, formatForegroundCloudReport } from "./reporting.js";
+import { describeSdkError } from "./sdk-error.js";
 
 /** Deliberately exposes no attach, resume, list-remote, MCP, tools or SDK store. */
 export interface ForegroundCloudAgentFactory {
@@ -67,8 +68,11 @@ async function boundedCancel(run: Run, timeoutMs: number): Promise<void> {
     new Promise<void>(resolve => { timer = setTimeout(resolve, timeoutMs); })]); }
   finally { if (timer) clearTimeout(timer); }
 }
-function safeError(error: unknown): Error {
+function safeError(error: unknown, apiKey = ""): Error {
   if (error instanceof CloudRuntimeError) return error;
+  // Known SDK errors keep class, code, status, request ID and a redacted server line only.
+  const described = describeSdkError(error, "operation", apiKey);
+  if (described) return new CloudRuntimeError("cloud_operation_failed", `${described} Inspect the durable ledger and Cursor dashboard before retrying.`);
   if (object(error) && typeof error.code === "string" && ["cloud_config_invalid", "env_forwarding_not_implemented", "project_settings_untrusted"].includes(error.code)) {
     return new CloudRuntimeError(error.code, "Cursor Cloud settings were refused. No prompt was sent.");
   }
@@ -114,6 +118,7 @@ export function createForegroundCloudSource(deps: ForegroundCloudDependencies): 
       stop: () => { detached = true; stopWaiting(); signal(); } };
     active.add(handle);
     const emit = (event: CursorTurnEvent) => { if (!detached && !interrupted) { events.push(event); signal(); } };
+    let apiKey = "";
     const task = (async () => {
       try {
         if (await deps.isLocalRunPending(sessionID)) throw new CloudRuntimeError("local_run_pending", "Finish the pending local Cursor run before starting Cloud.");
@@ -128,7 +133,7 @@ export function createForegroundCloudSource(deps: ForegroundCloudDependencies): 
         const localState = (deps.inspectLocalState ?? inspectCursorCloudLocalState)(deps.cwd, { repo: config.cloud.repo.value, branch: config.cloud.branch.value });
         const preflight = preflightCursorCloudRuntime({ resolvedConfig: config, localState, hasPriorContext: context.hasPriorContext });
         if (!preflight.ok) throw new CloudRuntimeError(preflight.issues[0]?.code ?? "cloud_preflight_failed", preflight.issues.map(issue => `${issue.code}: ${issue.message}`).join("\n"));
-        const apiKey = await key(sessionID);
+        apiKey = await key(sessionID);
         if (interrupted || detached || closed) return;
         // Prepared durable write proves both session existence and ledger writability BEFORE create.
         entry = await prepareCloudRecord(deps.store, sessionID);
@@ -185,7 +190,7 @@ export function createForegroundCloudSource(deps: ForegroundCloudDependencies): 
         if (!sawText && result.result) { const value = createCloudTextSanitizer(apiKey); const prefix = value.push(result.result); emit({ type: "text", text: prefix + value.finish() }); }
         emit({ type: "text", text: formatForegroundCloudReport(agent.agentId, result, apiKey) });
         emit({ type: "done", reason: "stop" });
-      } catch (error) { failure = safeError(error); }
+      } catch (error) { failure = safeError(error, apiKey); }
       finally { completed = true; handle.close(); signal(); }
     })();
     try {
@@ -212,6 +217,7 @@ export function createForegroundCloudSource(deps: ForegroundCloudDependencies): 
     if (!validCloudAgentID(agentID)) throw new CloudRuntimeError("cloud_id_invalid", "Only recorded Cloud agent IDs can be cleaned up.");
     if (busy.has(sessionID)) throw new CloudRuntimeError("cloud_session_busy", "A Cursor Cloud action is already active in this session.");
     busy.add(sessionID);
+    let apiKey = "";
     try {
       if (!await deps.store.sessionExists(sessionID)) throw new CloudRuntimeError("session_not_persisted", "Cloud cleanup requires a persisted session.");
       const ledger = await readCloudLedger(deps.store, sessionID);
@@ -219,13 +225,13 @@ export function createForegroundCloudSource(deps: ForegroundCloudDependencies): 
       if (!entry || entry.phase === "deleted") throw new CloudRuntimeError("cloud_agent_not_owned", "This session has no recorded Cloud agent with that ID.");
       if (ledger.records.some(pendingIntent)) throw new CloudRuntimeError("cleanup_pending", "An unresolved cleanup intent blocks retries. Inspect the Cursor dashboard.");
       if (action === "archive" && entry.phase === "archived") return;
-      const apiKey = await key(sessionID);
+      apiKey = await key(sessionID);
       const factory = await load(); assertOpen();
       const intent: CloudRecord = { ...entry, phase: action === "archive" ? "archive_intent" : "delete_intent" };
       await writeCloudRecord(deps.store, intent);
       await factory[action](agentID, { apiKey });
       await writeCloudRecord(deps.store, { ...intent, phase: action === "archive" ? "archived" : "deleted" });
-    } catch (error) { throw safeError(error); }
+    } catch (error) { throw safeError(error, apiKey); }
     finally { busy.delete(sessionID); }
   };
   const shutdown = async () => { closed = true; for (const handle of active) { handle.stop(); handle.close(); } };
