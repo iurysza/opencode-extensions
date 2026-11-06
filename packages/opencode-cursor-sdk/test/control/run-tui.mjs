@@ -4,19 +4,28 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:net";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildControls } from "./build.mjs";
-import { prepareIsolatedBase, requireBinaryVersion, requireIsolationTools, sandboxed, sandboxedSpawn } from "../isolation.mjs";
+import { prepareIsolatedBase, requireBinaryVersion, requireIsolationTools, sandboxCommand, sandboxed, sandboxedSpawn } from "../isolation.mjs";
 const here = dirname(fileURLToPath(import.meta.url)); const repo = resolve(here, "../../../..");
 const die = message => { throw new Error("CONTROL TUI FAIL-CLOSED: " + message); };
-requireIsolationTools(die); buildControls(repo);
+requireIsolationTools(die);
+const terminalVersion = spawnSync("termctrl", ["--version"], { encoding: "utf8", timeout: 5000 });
+if (terminalVersion.error?.code === "ENOENT") {
+  console.log(JSON.stringify({ skip: "optional TUI capability unavailable: termctrl executable missing" }));
+  process.exit(0);
+}
+if (terminalVersion.error || terminalVersion.status !== 0) die("termctrl executable exists but --version failed");
+buildControls(repo);
 const versions = process.argv.slice(2).length ? process.argv.slice(2) : ["2.0.0", "2.2.5"];
-// The controller is local tooling, not OpenCode. The child gets env -i and the sandbox.
-const env = { ...process.env, TERMCTRL_RUNTIME_DIR: "/tmp/opencode-control-g6" };
+// The trusted controller must start its own daemon inside the validated Linux namespace.
+// A unique, short socket path cannot attach to an existing host daemon. Reuse for this run only.
+const env = { ...process.env, TERMCTRL_RUNTIME_DIR: mkdtempSync("/tmp/oc-control-") };
 function tc(...args) { const r = spawnSync("termctrl", args, { env, encoding: "utf8", timeout: 15000 }); if (r.status !== 0) die(`termctrl ${args[0]}: ${r.stderr}`); return r.stdout; }
 async function until(label, fn, ms = 15000) { const end = Date.now() + ms; for (;;) { if (await fn()) return; if (Date.now() > end) die("timeout: " + label); await new Promise(resolve => setTimeout(resolve, 50)); } }
+try {
 for (const version of versions) for (const topology of (process.env.CONTROL_TOPOLOGY ? [process.env.CONTROL_TOPOLOGY] : ["standalone", "attached-local"])) {
   const base = join(repo, ".fixtures/control-tui", `${version}-${topology}`);
   prepareIsolatedBase(base, `${version}-${topology}`, die);
@@ -39,9 +48,8 @@ for (const version of versions) for (const topology of (process.env.CONTROL_TOPO
       await until("local backend", () => serverOutput.includes("server listening on"));
       args.splice(0, 1, "--server", `http://127.0.0.1:${port}`);
     }
-    tc("start", name, "--host", "opentui", "--cols", "132", "--rows", "40", "--cwd", project, "--", "/usr/bin/env", "-i",
-      ...Object.entries({ HOME: join(base,"home"), XDG_CONFIG_HOME: join(base,"config"), XDG_DATA_HOME: join(base,"data"), XDG_CACHE_HOME: join(base,"cache"), XDG_STATE_HOME: join(base,"state"), PATH:"/usr/bin:/bin", TERM:"xterm-256color", OPENCODE_CONFIG:join(base,"oc/opencode.json"), OPENCODE_DISABLE_PROJECT_CONFIG:"1", OPENCODE_DISABLE_MODELS_FETCH:"1", OPENCODE_DISABLE_AUTOUPDATE:"1", CONTROL_TUI_LOG:tuiLog, ...(topology === "attached-local" ? { OPENCODE_PASSWORD: password } : {}) }).map(([k,v])=>`${k}=${v}`),
-      "/usr/bin/sandbox-exec", "-f", join(base,"sb.sb"), bin, ...args);
+    const invocation = sandboxCommand(base, bin, args, { TERM: "xterm-256color", CONTROL_TUI_LOG: tuiLog, ...(topology === "attached-local" ? { OPENCODE_PASSWORD: password } : {}) });
+    tc("start", name, "--host", "opentui", "--cols", "132", "--rows", "40", "--cwd", project, "--", invocation.command, ...invocation.args);
     const screen = () => tc("show", name);
     const wait = (label, text) => until(label, () => screen().includes(text));
     const absent = (label, text) => until(label, () => !screen().includes(text));
@@ -77,3 +85,4 @@ for (const version of versions) for (const topology of (process.env.CONTROL_TOPO
     writeFileSync(join(base,"server.out"),serverOutput.replace(/server password \S+/g, "server password [fixture-redacted]"));
   }
 }
+} finally { rmSync(env.TERMCTRL_RUNTIME_DIR, { recursive: true, force: true }); }

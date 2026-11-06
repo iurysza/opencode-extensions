@@ -1,7 +1,18 @@
 // T1 compatibility matrix (plan.md "T1 compatibility matrix"). Shared by acquisition and runtime.
 import { join } from "node:path";
 
-export const PACKAGE = "@opencode/cli-darwin-arm64";
+const CLI_PACKAGES = Object.freeze({
+  "darwin-arm64": "@opencode/cli-darwin-arm64",
+  "linux-x64": "@opencode/cli-linux-x64",
+  "linux-arm64": "@opencode/cli-linux-arm64",
+});
+
+/** Explicit supported targets, confirmed in @opencode/cli's public endpoint metadata. */
+export function cliTarget(platform = process.platform, arch = process.arch) {
+  const packageName = CLI_PACKAGES[`${platform}-${arch}`];
+  if (!packageName) throw new Error(`unsupported CLI fixture target ${platform}/${arch}; supported: darwin/arm64, linux/x64, linux/arm64`);
+  return Object.freeze({ platform, arch, package: packageName });
+}
 export const DECLARED_VERSIONS = ["2.0.0", "2.0.3", "2.0.4", "2.0.20", "2.0.21", "2.0.32", "2.1.0", "2.2.0", "2.2.3", "2.2.5"];
 
 /** Declared versions plus the latest stable 2.x, deduplicated, in declared order. */

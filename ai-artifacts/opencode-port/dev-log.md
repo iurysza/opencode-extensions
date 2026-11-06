@@ -257,3 +257,17 @@ The prior ed754c2 alpha is frozen under `.fixtures/home-alpha-ed754c2`, with ind
 ## 2026-11-05: cross-turn bridge regression (fake SDK)
 
 Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime.test.ts`. With a fake pooled agent, two user turns create one agent and send twice. Turn 1's bridge refuses connections after its turn ends. Turn 2's send carries only its own new bridge URL, and the fake reaches that URL. Native-only turns pass no `mcpServers` or `tools` at create or send. No defect found and no production code changed. Real SDK per-send `mcpServers` behaviour on a pooled agent remains unqualified; it needs an approved live probe.
+## 2026-11-05 nudge-2233: Linux sandbox committed
+
+- Committed `e19cbef` (fail-closed Linux bubblewrap sandbox) and `9058cde` (Ubuntu CI job, Linux requirements and test steps).
+- macOS verification on the exact tree: build, `check` (734 passed, 1 Linux-only skip), `check:packs` and the isolation probe pass. Independent QA passed 36 endpoint scenarios. Static sandbox review found nothing to fix.
+- Not verified: any Linux execution. Iury runs `linux-test.md` on a Linux host.
+- Refreshed auto release plan posted to the Inbox thread `opencode port`. Release automation stays disabled.
+
+## 2026-11-05 lnx2: Linux run green
+
+- Iury ran `linux-test.md` at `9058cde` on a Linux x64 host (Node 22.18.0, bubblewrap, Perl, user namespaces allowed).
+- Probe: `pass: true`, `backend: "bubblewrap"`, all 14 checks true. `check`: 735 passed, 0 failed, including the Linux-only kernel test.
+- `acquire.mjs` fetched `@opencode/cli-linux-x64` 2.0.0 and 2.2.5 with matching sha512. `test:host`, `test:req` and `test:t2` passed on both versions.
+- `test:tui` skipped: no termctrl on that host, which `linux-test.md` allows. No bugs found.
+- Linux ARM64 is still untested.

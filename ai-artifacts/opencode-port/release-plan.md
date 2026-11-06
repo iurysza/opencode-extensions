@@ -38,7 +38,7 @@ Before activation, the integrator must complete these requirements:
 
 ## Verification boundaries
 
-Every PR runs Ubuntu installation, build, workspace checks, release fixture tests, syntax checks, and real local tarball inspection. These checks do not run or claim macOS host probes.
+The Ubuntu PR job is configured to install bubblewrap and Perl, require the Linux sandbox capability/denial/private-loopback probe, then run installation, build, workspace checks, integrity-checked Linux endpoint acquisition, host/request/offline-SDK probes, release fixture tests, syntax checks, and local tarball inspection. Missing required sandbox capabilities fail the job; it never runs the host probes unsandboxed. This configuration has not been exercised on Linux from the Mac development host. It does not claim macOS host coverage.
 
 The optional endpoint job requires `HOST_VERIFICATION_ENABLED == 'true'` and a trusted `main` push or dispatch. Its runner labels are `[self-hosted, macOS, ARM64]`. No GitHub-hosted ARM64 capacity is assumed. Provision a dedicated, disposable runner with no personal configuration or credentials and the existing fail-closed macOS sandbox setup before enabling it. PR code never runs on this self-hosted job.
 

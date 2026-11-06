@@ -20,6 +20,14 @@ RPC push events and native dialogs replace Pi command displays. OpenCode 2.x has
 
 Durable local resume, helper execution, full settings, model-cache persistence, the complete host matrix, and live SDK behavior remain beta gaps. Foreground model selection supports bundled catalog parameters and the default variant, not undiscovered variants. Isolated fake-SDK host tests do not establish live parity.
 
+## Linux test requirements
+
+The host-test sandbox requires `bubblewrap` and Perl. On Debian or Ubuntu, install them with `sudo apt-get update && sudo apt-get install -y bubblewrap perl`. Use Node.js 22.22.3, the CI version, and npm. Fixture extraction also requires system `tar`. A Node executable under a denied tool directory requires system `ldd`, provided by `libc-bin` on Debian and Ubuntu.
+
+The kernel and host policy must allow unprivileged user, mount, PID, and network namespaces, with private `/proc` and working IPv4 and IPv6 loopback. AppArmor or container restrictions can block bubblewrap even when it is installed. A failed capability probe stops the tests. The harness never disables AppArmor, changes security sysctls, or runs unsandboxed as a fallback.
+
+Fixture acquisition supports macOS ARM64 and Linux x64 or ARM64 using the published glibc Linux packages. It does not auto-select musl or baseline builds. Unsupported OS and architecture pairs fail explicitly. Follow [Run the Linux sandbox tests](../../ai-artifacts/opencode-port/linux-test.md) for exact commands, expected results, and the optional terminal-test requirement. Linux runtime behavior is not verified on the development Mac.
+
 ## Provenance
 
 The port adapts the MIT-licensed Pi Cursor SDK extension. See [LICENSE](./LICENSE). `@cursor/sdk` is a normal pinned proprietary dependency, not vendored code. Terms review and release approval remain required before publication.

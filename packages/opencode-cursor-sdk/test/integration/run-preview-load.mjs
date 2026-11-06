@@ -2,7 +2,7 @@
 // No model requests, no credentials, no Cursor imports. Tests the actual generator/default entries.
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
-import { appendFileSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prepareIsolatedBase, requireBinaryVersion, requireIsolationTools, sandboxed, sandboxedSpawn } from "../isolation.mjs";
@@ -14,11 +14,10 @@ const sdkPath = realpathSync(join(repo, "node_modules/@cursor/sdk"));
 const versions = process.argv.slice(2).length ? process.argv.slice(2) : ["2.0.0", "2.2.5"];
 for (const version of versions) for (const mode of ["local-only", "with-cloud"]) {
   const base = join(repo, `.fixtures/preview-load-${mode}`, version);
-  prepareIsolatedBase(base, `preview-${version}-${mode}`, die);
-  // Deny loading the real SDK even accidentally. Positive EPERM control precedes host startup.
-  appendFileSync(join(base, "sb.sb"), `\n(deny file-read* (subpath ${JSON.stringify(sdkPath)}))\n`);
+  prepareIsolatedBase(base, `preview-${version}-${mode}`, die, { extraReadDenials: [sdkPath] });
+  // Deny loading the real SDK even accidentally, on either backend.
   const denied = sandboxed(base, "/bin/cat", [join(sdkPath, "package.json")], repo);
-  if (denied.status === 0 || !`${denied.stdout}${denied.stderr}`.includes("Operation not permitted")) die("SDK filesystem import denial is not enforced");
+  if (denied.status === 0 || !/Operation not permitted|Permission denied/u.test(`${denied.stdout}${denied.stderr}`)) die("SDK filesystem import denial is not enforced");
   writeFileSync(join(base, "sdk-denial.txt"), denied.stderr ?? "");
   const bin = join(repo, ".fixtures/inspect", `bin-${version}`, "package/bin/opencode");
   requireBinaryVersion(base, bin, version, die);
