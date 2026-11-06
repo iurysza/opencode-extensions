@@ -1,0 +1,27 @@
+{
+  "version": "2.2.5",
+  "shape": "builtin",
+  "exit": 0,
+  "sessionID": "ses_e5014b331ffeyF3ZEAheASBDM5",
+  "stored": [
+    {
+      "name": "edit",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "shell",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "read",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    }
+  ],
+  "hostNeverExecuted": true
+}

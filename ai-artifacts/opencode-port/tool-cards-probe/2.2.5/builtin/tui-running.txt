@@ -1,0 +1,59 @@
+ ⠋ tool cards builtin            +
+
+     Switched model to Cursor tool-card fake                                                tool cards builtin
+
+  ┃
+  ┃  "probe tool cards"
+  ┃
+
+     Probe builtin start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     → Explored: 1 read
+
+     Probe builtin end.
+
+     Build · Cursor tool-card fake · 55ms
+
+     Switched agent to Build
+
+  ┃
+  ┃  probe live
+  ┃
+
+     Probe builtin start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     ⠏ Exploring: 1 read                                                                      ⬖ Getting started                ✕
+
+                                                                                                OpenCode includes free models so
+                                                                                                you can start immediately.
+
+                                                                                                Connect from 75+ providers to
+                                                                                                use other models, including
+  ┃                                                                                             Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                             Connect provider        /connect
+  ┃  Build · Cursor tool-card fake Cursor
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   ■■■⬝⬝⬝⬝⬝ esc interrupt                              shift+tab agents  ctrl+p commands    /…/2.…/project:cursor-tool-cards-probe

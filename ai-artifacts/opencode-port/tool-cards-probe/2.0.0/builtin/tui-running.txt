@@ -1,0 +1,59 @@
+ ⠇ tool cards builtin            +
+
+     Switched model to Cursor tool-card fake                                                tool cards builtin
+
+  ┃
+  ┃  "probe tool cards"
+  ┃
+
+     Probe builtin start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     → Explored — 1 read
+
+     Probe builtin end.
+
+     Build · Cursor tool-card fake · 94ms
+
+     Switched agent to Build
+
+  ┃
+  ┃  probe live
+  ┃
+
+     Probe builtin start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     ⠼ Exploring — 1 read
+
+
+
+
+
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · Cursor tool-card fake Cursor
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   ⬝■■■■■■⬝ esc interrupt                              shift+tab agents  ctrl+p commands    /…/2.…/project:cursor-tool-cards-probe

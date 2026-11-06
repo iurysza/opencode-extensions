@@ -1,0 +1,72 @@
+[
+  {
+    "type": "tool",
+    "id": "cursor-native-edit",
+    "name": "edit",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project/src/sample.ts"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "--- a/src/sample.ts\n+++ b/src/sample.ts\n@@ -1,2 +1,2 @@\n const a = 1;\n-const b = 2;\n+const b = 3;\n"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952796360,
+      "ran": 1793952796361,
+      "completed": 1793952796362
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-shell",
+    "name": "shell",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "command": "echo probe && ls src",
+        "workdir": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "probe\nsample.ts\n"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952796362,
+      "ran": 1793952796364,
+      "completed": 1793952796364
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-read",
+    "name": "read",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project/src/sample.ts"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "const a = 1;\nconst b = 3;\n"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952796365,
+      "ran": 1793952796366,
+      "completed": 1793952796366
+    }
+  }
+]

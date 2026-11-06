@@ -271,3 +271,11 @@ Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime
 - `acquire.mjs` fetched `@opencode/cli-linux-x64` 2.0.0 and 2.2.5 with matching sha512. `test:host`, `test:req` and `test:t2` passed on both versions.
 - `test:tui` skipped: no termctrl on that host, which `linux-test.md` allows. No bugs found.
 - Linux ARM64 is still untested.
+
+## 2026-11-06 native tool cards probe (spike, branch `cursor-tool-cards-probe`)
+
+- Added `packages/opencode-cursor-sdk/test/tool-cards/` (fixture plugin plus sandboxed runner). Scripted fake source, no SDK, no network.
+- 2.2.5: `cursor_*` names render as generic rows. Built-in names (`edit`, `shell`, `read`) render native cards. 2.0.0 matches for the built-in shape.
+- Provider results cannot set `metadata`, so the edit card shows only its header, not the diff.
+- `hostNeverExecuted: true` in every run. Evidence and proposal: `ai-artifacts/opencode-port/tool-cards-probe/README.md`.
+- No production change: built-in names conflict with accepted fact F-06 and need approval.

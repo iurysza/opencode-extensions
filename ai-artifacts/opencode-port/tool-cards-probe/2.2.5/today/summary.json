@@ -1,0 +1,27 @@
+{
+  "version": "2.2.5",
+  "shape": "today",
+  "exit": 0,
+  "sessionID": "ses_e5015060effeD22BIqOBEqXTyN",
+  "stored": [
+    {
+      "name": "cursor_edit",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "cursor_shell",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "cursor_read",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    }
+  ],
+  "hostNeverExecuted": true
+}

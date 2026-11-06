@@ -1,0 +1,72 @@
+[
+  {
+    "type": "tool",
+    "id": "cursor-native-edit",
+    "name": "cursor_edit",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"status\":\"success\",\"value\":{\"linesAdded\":1,\"linesRemoved\":1,\"diffString\":\"--- a/src/sample.ts\\n+++ b/src/sample.ts\\n@@ -1,2 +1,2 @@\\n const a = 1;\\n-const b = 2;\\n+const b = 3;\\n\"}}"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952775149,
+      "ran": 1793952775150,
+      "completed": 1793952775151
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-shell",
+    "name": "cursor_shell",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "command": "echo probe && ls src",
+        "workingDirectory": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-today/project"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"status\":\"success\",\"value\":{\"exitCode\":0,\"signal\":\"\",\"stdout\":\"probe\\nsample.ts\\n\",\"stderr\":\"\",\"executionTime\":12}}"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952775151,
+      "ran": 1793952775152,
+      "completed": 1793952775152
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-read",
+    "name": "cursor_read",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"status\":\"success\",\"value\":{\"content\":\"const a = 1;\\nconst b = 3;\\n\",\"totalLines\":2,\"fileSize\":26}}"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793952775153,
+      "ran": 1793952775154,
+      "completed": 1793952775154
+    }
+  }
+]
