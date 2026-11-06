@@ -8,7 +8,7 @@ Mode/tool controls and trusted local-setting mapping are implemented in `cursor-
 
 ## Helper safety: G4b
 
-Production helpers remain disabled. Public SDK 1.0.37 types support local `tools: []`; keyless creation is qualified, but no send has run. Neither T1 fakes nor keyless initialization proves native-tool denial. The approved contract requires T2 and separately approved T3 evidence before enabling the lane.
+Production helpers remain disabled. Public SDK 1.0.37 types support local `tools: []` (the pin is now 1.0.40; not rechecked); keyless creation is qualified, but no send has run. Neither T1 fakes nor keyless initialization proves native-tool denial. The approved contract requires T2 and separately approved T3 evidence before enabling the lane.
 
 A future helper implementation should create a fresh agent/store per request, pass only the supplied helper prompt and explicit `tools: []`, and never copy coding/Cloud options, MCP, custom tools, tasks or pooled history. Abort, unexpected tool events and consumer cancellation must cancel and dispose it. No activation switch should bypass qualification.
 

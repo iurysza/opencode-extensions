@@ -18,7 +18,8 @@
   ],
   "dependencies": {
     "@ai-sdk/provider": "3.0.8",
-    "@cursor/sdk": "1.0.37"
+    "@cursor/sdk": "1.0.40",
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.0 <3",

@@ -1,5 +1,5 @@
 // T2 keyless Agent.create probe (approved: Inbox msg_redacted). Inside the host
-// OpenCode runtime it calls the real public `Agent.create` from @cursor/sdk 1.0.37 with local-only
+// OpenCode runtime it calls the real public `Agent.create` from @cursor/sdk 1.0.40 with local-only
 // options, no apiKey, `tools: []`, no MCP, no custom tools, no agents, `settingSources: []`, a
 // fixture cwd and a fixture SqliteLocalAgentStore. It never calls send, resume or prompt and
 // never passes Cloud options. A returned handle is only disposed through its public API.

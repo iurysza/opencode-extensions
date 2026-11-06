@@ -1,5 +1,5 @@
 // Kept identical in both packages: they cannot depend on each other.
-// Classifies @cursor/sdk 1.0.37 errors by `name` and duck-typed fields only.
+// Classifies @cursor/sdk 1.0.40 errors by `name` and duck-typed fields only.
 // Importing the SDK here would load it at package load time.
 
 export const AGENT_BUSY = "Agent already has an active run. Wait until it is idle before sending a follow-up.";

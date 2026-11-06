@@ -1,4 +1,4 @@
-// T2 fixture: imports the real @cursor/sdk 1.0.37 inside the host OpenCode runtime (its Bun),
+// T2 fixture: imports the real @cursor/sdk 1.0.40 inside the host OpenCode runtime (its Bun),
 // opens a fixture SqliteLocalAgentStore, writes, closes, reopens and reads back, and records
 // offline public error-class shapes. Never calls Agent.create/resume/send, never reads a real
 // store, uses no key. Writes evidence JSON to `options.evidence`, then serves the fake model so

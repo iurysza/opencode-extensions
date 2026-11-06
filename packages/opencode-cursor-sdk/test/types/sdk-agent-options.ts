@@ -1,4 +1,4 @@
-// T2 type evidence (G4b), compiled against the installed @cursor/sdk 1.0.37 declarations.
+// T2 type evidence (G4b), compiled against the installed @cursor/sdk 1.0.40 declarations.
 // Type-only: no runtime import. Proves the published AgentOptions accepts the helper-lane shape
 // (local agent, `tools: []`, no MCP, no customTools). It does NOT prove runtime tool denial.
 import type { AgentOptions, LocalAgentOptions, ToolName } from "@cursor/sdk";

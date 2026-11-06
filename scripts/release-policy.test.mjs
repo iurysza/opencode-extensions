@@ -86,7 +86,7 @@ test("bundled SDK and local runtime dependencies cannot be published", () => {
   for (const range of ["file:../../sdk", "workspace:*", "link:../sdk", "git+https://example.invalid/sdk", "https://example.invalid/sdk.tgz", "../sdk"]) {
     assert.throws(() => validate({ manifest: { ...manifest(), dependencies: { "@cursor/sdk": range } } }), /Non-registry/);
   }
-  validate({ manifest: { ...manifest(), dependencies: { "@cursor/sdk": "1.0.37" } } });
+  validate({ manifest: { ...manifest(), dependencies: { "@cursor/sdk": "1.0.40" } } });
 });
 
 test("pack allowlist admits compiled code and docs, never vendored SDK or secrets", () => {
@@ -111,7 +111,7 @@ test("actual clean tarballs contain external SDK references, not bundled SDK cod
     const { root, write } = fixture(t, entry);
     const data = manifest(entry);
     data.private = true;
-    data.dependencies = entry === pkg ? { "@cursor/sdk": "1.0.37" } : {};
+    data.dependencies = entry === pkg ? { "@cursor/sdk": "1.0.40" } : {};
     data.scripts = { prepack: "node -e \"require('fs').writeFileSync('HOOK-RAN', 'bad')\"" };
     write(`${entry.directory}/package.json`, data);
     const result = packPackage(root, entry.directory, { keep: true });

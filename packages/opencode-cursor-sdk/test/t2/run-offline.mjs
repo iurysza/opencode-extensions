@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// T2 offline real-SDK probe: loads a test-only plugin that imports the real @cursor/sdk 1.0.37
+// T2 offline real-SDK probe: loads a test-only plugin that imports the real @cursor/sdk 1.0.40
 // inside the pinned OpenCode CLI binaries (their own Bun runtimes) and exercises the
 // @cursor/sdk/sqlite store on a fixture database. Same isolation as T1: `env -i`, isolated
 // HOME/XDG under .fixtures/t2/<v>, loopback-only sandbox, positive EPERM self-check. No key, no
@@ -27,7 +27,7 @@ if (!existsSync(join(pkg, "dist/plugin/create.js"))) die("dist missing; run npm 
 const sdkPkg = join(repo, "node_modules/@cursor/sdk/package.json");
 if (!existsSync(sdkPkg)) die("@cursor/sdk not installed; run npm ci --ignore-scripts");
 const sdkVersion = JSON.parse(readFileSync(sdkPkg, "utf8")).version;
-if (sdkVersion !== "1.0.37") die(`@cursor/sdk is ${sdkVersion}, expected 1.0.37`);
+if (sdkVersion !== "1.0.40") die(`@cursor/sdk is ${sdkVersion}, expected 1.0.40`);
 const rel = (p) => (typeof p === "string" ? p.replace(/^file:\/\//, "").replace(repo, "<repo>") : p);
 
 function runVersion(version) {
