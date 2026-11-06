@@ -49,11 +49,13 @@ try {
     let screen = "";
     try {
       tc("start", name, "--host", "opentui", "--cols", "132", "--rows", "60", "--cwd", project, "--", invocation.command, ...invocation.args);
-      await until("live turn started", () => (screen = tc("show", name)).split(`Probe ${shape} start.`).length > 2);
+      // Match after the live prompt: earlier turns may scroll off the captured rows.
+      const after = (text, marker) => text.includes("probe live") && text.slice(text.lastIndexOf("probe live")).includes(marker);
+      await until("live turn started", () => after(screen = tc("show", name), `Probe ${shape} start.`));
       await new Promise((r) => setTimeout(r, 1500));
       // Text only: the PNG capture was observed to return the settled frame, not the live one.
       writeFileSync(join(dir, "tui-running.txt"), tc("show", name));
-      await until("live turn finished", () => (screen = tc("show", name)).split(`Probe ${shape} end.`).length > 2, 40000);
+      await until("live turn finished", () => after(screen = tc("show", name), `Probe ${shape} end.`), 60000);
       await new Promise((r) => setTimeout(r, 800));
       screen = tc("show", name);
       writeFileSync(join(dir, "tui.txt"), screen);

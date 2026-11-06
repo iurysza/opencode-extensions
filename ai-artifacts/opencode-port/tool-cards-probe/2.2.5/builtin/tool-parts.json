@@ -1,72 +1,151 @@
 [
   {
     "type": "tool",
-    "id": "cursor-native-edit",
+    "id": "cursor-native-860d9eaabc34a62753de7ffe",
     "name": "edit",
     "executed": true,
     "state": {
       "status": "completed",
       "input": {
-        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project/src/sample.ts"
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project/src/sample.ts"
       },
       "content": [
         {
           "type": "text",
-          "text": "--- a/src/sample.ts\n+++ b/src/sample.ts\n@@ -1,2 +1,2 @@\n const a = 1;\n-const b = 2;\n+const b = 3;\n"
+          "text": "Edited ~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project/src/sample.ts (+1 -1)\n\n--- a/src/sample.ts\n+++ b/src/sample.ts\n@@ -1,2 +1,2 @@\n const a = 1;\n-const b = 2;\n+const b = 3;"
         }
       ]
     },
     "time": {
-      "created": 1793952796360,
-      "ran": 1793952796361,
-      "completed": 1793952796362
+      "created": 1793955528728,
+      "ran": 1793955528730,
+      "completed": 1793955528730
     }
   },
   {
     "type": "tool",
-    "id": "cursor-native-shell",
+    "id": "cursor-native-1e7eb4d678200e9f070940ac",
     "name": "shell",
     "executed": true,
     "state": {
       "status": "completed",
       "input": {
         "command": "echo probe && ls src",
-        "workdir": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project"
+        "workdir": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project"
       },
       "content": [
         {
           "type": "text",
-          "text": "probe\nsample.ts\n"
+          "text": "probe\nsample.ts"
         }
       ]
     },
     "time": {
-      "created": 1793952796362,
-      "ran": 1793952796364,
-      "completed": 1793952796364
+      "created": 1793955528732,
+      "ran": 1793955528733,
+      "completed": 1793955528734
     }
   },
   {
     "type": "tool",
-    "id": "cursor-native-read",
+    "id": "cursor-native-6f3658822a73dc4c1d09ba64",
     "name": "read",
     "executed": true,
     "state": {
       "status": "completed",
       "input": {
-        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-builtin/project/src/sample.ts"
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project/src/sample.ts"
       },
       "content": [
         {
           "type": "text",
-          "text": "const a = 1;\nconst b = 3;\n"
+          "text": "Read ~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project/src/sample.ts (2 lines, 26 bytes)"
         }
       ]
     },
     "time": {
-      "created": 1793952796365,
-      "ran": 1793952796366,
-      "completed": 1793952796366
+      "created": 1793955528734,
+      "ran": 1793955528735,
+      "completed": 1793955528735
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-506e289282d30c8e2c9d0950",
+    "name": "todowrite",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "todos": [
+          {
+            "content": "Edit sample",
+            "status": "completed"
+          },
+          {
+            "content": "Verify cards",
+            "status": "in_progress"
+          }
+        ]
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Todos updated: 1/2 completed"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793955528736,
+      "ran": 1793955528736,
+      "completed": 1793955528737
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-53b058f86e7b8f3522cadac6",
+    "name": "glob",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "pattern": "**/*.ts",
+        "path": "~/dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.5-runtime/project"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "src/sample.ts"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793955528737,
+      "ran": 1793955528738,
+      "completed": 1793955528739
+    }
+  },
+  {
+    "type": "tool",
+    "id": "cursor-native-5300ed0fabc7e270acce0ed6",
+    "name": "cursor_write",
+    "executed": true,
+    "state": {
+      "status": "completed",
+      "input": {
+        "not": "a valid OpenCode write schema"
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "Wrote file"
+        }
+      ]
+    },
+    "time": {
+      "created": 1793955528739,
+      "ran": 1793955528740,
+      "completed": 1793955528740
     }
   }
 ]

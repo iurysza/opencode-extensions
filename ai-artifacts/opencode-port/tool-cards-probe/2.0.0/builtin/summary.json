@@ -1,8 +1,8 @@
 {
   "version": "2.0.0",
-  "shape": "builtin",
+  "shape": "runtime",
   "exit": 0,
-  "sessionID": "ses_e50143c74ffeclDjD4RqBTFag6",
+  "sessionID": "ses_e4feab098ffeEBB6VlS8kIhaVn",
   "stored": [
     {
       "name": "edit",
@@ -18,6 +18,24 @@
     },
     {
       "name": "read",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "todowrite",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "glob",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "cursor_write",
       "status": "completed",
       "executed": true,
       "metadataKeys": []

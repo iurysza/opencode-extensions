@@ -43,15 +43,43 @@ const source = async function* (request) {
   yield { type: "done", reason: "stop" };
 };
 
-const inner = createCursorPlugin({
-  lanes: { coding: source, helper: { _tag: "unavailable" } },
-  models: [{ id: "fake", name: "Cursor tool-card fake", context: 200000, output: 32000 }],
-  onRefusal: (refusal) => console.error(`[cursor-tool-cards] refused: ${refusal.message}`),
-});
+/** Fake Cursor SDK for the `runtime` shape: the production local runtime maps names and results. */
+const fakeSdk = {
+  models: async () => [{ id: "fake", displayName: "Cursor tool-card fake" }],
+  openStore: async () => ({ store: {}, dispose: async () => {} }),
+  create: async () => ({
+    close() {},
+    async send(prompt, sendOptions) {
+      const live = prompt.includes("probe live");
+      const task = (async () => {
+        await sendOptions.onDelta({ update: { type: "text-delta", text: `Probe ${options.shape} start.` } });
+        const todos = { type: "updateTodos", args: { todos: [{ content: "Edit sample", status: "completed" }, { content: "Verify cards", status: "inProgress" }] }, result: { status: "success", value: {} } };
+        const glob = { type: "glob", args: { globPattern: "**/*.ts", targetDirectory: options.project }, result: { status: "success", value: { files: ["src/sample.ts"], totalFiles: 1, clientTruncated: false, ripgrepTruncated: false } } };
+        const invalid = { type: "write", args: { not: "a valid OpenCode write schema" }, result: { status: "success", value: { by: "cursor" } } };
+        for (const { id, tool } of [...cursorCalls(options.project), { id: "todos", tool: todos }, { id: "glob", tool: glob }, { id: "invalid", tool: invalid }]) {
+          const { result, ...started } = tool;
+          await sendOptions.onDelta({ update: { type: "tool-call-started", callId: id, toolCall: started } });
+          if (live) await sleep(options.delayMs / 2);
+          await sendOptions.onDelta({ update: { type: "tool-call-completed", callId: id, toolCall: tool } });
+        }
+        await sendOptions.onDelta({ update: { type: "text-delta", text: ` Probe ${options.shape} end.` } });
+        return { id: "run-fake", status: "finished" };
+      })();
+      void task.catch(() => {});
+      return { wait: () => task, cancel: async () => {} };
+    },
+  }),
+};
+
+const models = [{ id: "fake", name: "Cursor tool-card fake", context: 200000, output: 32000 }];
+const onRefusal = (refusal) => console.error(`[cursor-tool-cards] refused: ${refusal.message}`);
 export default {
-  id: inner.id,
+  id: "cursor",
   async setup(context) {
     options = { ...options, ...context.options };
+    const inner = options.shape === "runtime"
+      ? createCursorPlugin({ models, onRefusal, local: { loadSdk: async () => fakeSdk, env: { CURSOR_API_KEY: "tool-cards-fixture-key", HOME: "/nonexistent" }, stateRoot: `${options.project}/../cursor-state` } })
+      : createCursorPlugin({ lanes: { coding: source, helper: { _tag: "unavailable" } }, models, onRefusal });
     return inner.setup(context);
   },
 };
