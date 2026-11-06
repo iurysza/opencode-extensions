@@ -7,6 +7,7 @@ import { FALLBACK_MODELS, resolveModelSelection } from "./models.js";
 import { DEFAULT_LOCAL_RUN_OPTIONS, type LocalRunOptions } from "../core/local-settings.js";
 import { ToolBridge, json, record } from "../core/bridge.js";
 import type { CursorTurnEvent, CursorTurnRequest, CursorTurnSource } from "../core/turn-events.js";
+import { diffBlock, nativeCall, nativeResult, type NativeCall } from "./native-tools.js";
 
 export interface LocalRun { wait(): Promise<RunResult>; cancel(): Promise<void> }
 export interface LocalAgent { send(message: string, options: SendOptions): Promise<LocalRun>; close(): void }
@@ -124,6 +125,8 @@ interface Live {
   finished: boolean;
   readonly listeners: (() => void)[];
   text: string;
+  /** Native calls already emitted to the host and still waiting for their result. */
+  readonly opened: Map<string, NativeCall>;
 }
 interface Session {
   readonly signature: string;
@@ -254,13 +257,26 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
     const fingerprint = hash([tool.type, tool.args]);
     const callId = typeof update.callId === "string" ? `cursor-native-${hash(update.callId).slice(0, 24)}` : native.get(fingerprint) ?? `cursor-native-${fingerprint.slice(0, 24)}`;
     native.set(fingerprint, callId);
-    // Buffer until completion: a bridge split must never strand a native call.
     const result = record(tool.result);
-    if (!result || completed.has(callId)) return;
+    if (completed.has(callId)) return;
+    const type = String(tool.type);
+    let call = live.opened.get(callId);
+    if (!call) {
+      const mapped = nativeCall(type, tool.args);
+      // Only leaf tools open at start; others buffer until completion so a bridge
+      // split never strands them. The name chosen here is reused for the result.
+      if (!result && !mapped.live) return;
+      call = { ...mapped, name: safeText(apiKey, mapped.name) };
+      live.opened.set(callId, call);
+      live.queue.push({ type: "native-tool-call", callId, toolName: call.name, input: call.input });
+    }
+    if (!result) return;
     completed.add(callId);
-    const name = safeText(apiKey, `cursor_${String(tool.type).replace(/[^a-zA-Z0-9_]/g, "_")}`);
-    live.queue.push({ type: "native-tool-call", callId, toolName: name, input: json(tool.args) });
-    live.queue.push({ type: "native-tool-result", callId, toolName: name, result: json(result) ?? "", isError: result.status === "error" });
+    live.opened.delete(callId);
+    const output = nativeResult(type, tool.args, result);
+    live.queue.push({ type: "native-tool-result", callId, toolName: call.name, result: output.text, isError: output.isError });
+    // The edit card draws diffs only from metadata, which a provider result cannot set.
+    if (output.diff) live.queue.push({ type: "text", text: diffBlock(output.diff) });
   }
   const source: CursorTurnSource = async function* (request) {
     const id = request.context.sessionID;
@@ -352,7 +368,7 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
             }
           }
           checkOpen(request);
-          const live: Live = { queue, bridge, redactor, cancelled: false, finished: false, listeners: [], text: "" };
+          const live: Live = { queue, bridge, redactor, cancelled: false, finished: false, listeners: [], text: "", opened: new Map() };
           state.live = live;
           releasePreparation();
           const native = new Map<string, string>();
@@ -389,12 +405,27 @@ export function createLocalRuntime(deps: LocalRuntimeDependencies): { source: Cu
         live.listeners.push(() => request.abortSignal?.removeEventListener("abort", abort));
         if (request.abortSignal.aborted) abort();
       }
+      // A bridge split must never strand an open native call: hold the bridge call
+      // until every native call yielded in this slice has its result.
+      let held: (CursorTurnEvent & { type: "bridge-tool-call" }) | undefined;
+      const unsettled = new Set<string>();
       for (;;) {
         const event = await live.queue.next();
         // Cancellation queues a final redacted prefix before its AbortError.
         // Drain that cleanup text, but never mutate state or touch the SDK here.
         if (live.cancelled && (event.type === "text" || event.type === "thinking")) { yield event; continue; }
         checkOpen(request);
+        if (event.type === "native-tool-call") unsettled.add(event.callId);
+        if (event.type === "native-tool-result") unsettled.delete(event.callId);
+        if (event.type === "bridge-tool-call" && unsettled.size) { held = event; continue; }
+        if (event.type === "native-tool-result" && held && !unsettled.size) {
+          yield event;
+          live.bridge.markEmitted(held.callId);
+          yield held;
+          split = true;
+          yield { type: "done", reason: "tool-calls" };
+          return;
+        }
         if (event.type === "bridge-tool-call") {
           live.bridge.markEmitted(event.callId);
           yield event;

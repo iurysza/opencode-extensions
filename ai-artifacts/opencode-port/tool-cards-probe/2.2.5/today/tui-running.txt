@@ -1,0 +1,59 @@
+ ⠏ tool cards today              +
+
+     Switched model to Cursor tool-card fake                                                tool cards today
+
+  ┃
+  ┃  "probe tool cards"
+  ┃
+
+     Probe today start.
+
+     ✓ cursor_edit [path=~/dev/worktrees/opencode-extensions/tool-cards-
+       probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts]
+
+     ✓ cursor_shell [command=echo probe && ls src, workingDirectory=~/
+       dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.
+       5-today/project]
+
+     ✓ cursor_read [path=~/dev/worktrees/opencode-extensions/tool-cards-
+       probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts]
+
+     Probe today end.
+
+     Build · Cursor tool-card fake · 56ms
+
+     Switched agent to Build
+
+  ┃
+  ┃  probe live
+  ┃
+
+     Probe today start.
+
+     ✓ cursor_edit [path=~/dev/worktrees/opencode-extensions/tool-cards-
+       probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts]
+
+     ✓ cursor_shell [command=echo probe && ls src, workingDirectory=~/
+       dev/worktrees/opencode-extensions/tool-cards-probe/.fixtures/tool-cards-run/2.2.
+       5-today/project]
+
+     ⠇ cursor_read [path=~/dev/worktrees/opencode-extensions/tool-cards-
+       probe/.fixtures/tool-cards-run/2.2.5-today/project/src/sample.ts]
+
+
+
+
+
+                                                                                              ⬖ Getting started                ✕
+
+                                                                                                OpenCode includes free models so
+                                                                                                you can start immediately.
+
+                                                                                                Connect from 75+ providers to
+                                                                                                use other models, including
+  ┃                                                                                             Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                             Connect provider        /connect
+  ┃  Build · Cursor tool-card fake Cursor
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   ■■■⬝⬝⬝⬝⬝ esc interrupt                              shift+tab agents  ctrl+p commands    /…/2.…/project:cursor-tool-cards-probe

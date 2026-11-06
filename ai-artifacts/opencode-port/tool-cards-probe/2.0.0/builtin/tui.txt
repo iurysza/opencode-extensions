@@ -1,0 +1,59 @@
+ • tool cards runtime            +
+  ┃
+                                                                                            tool cards runtime
+     → Explored — 1 read
+
+     ✓ todowrite
+
+     → Explored — 1 search
+
+     ✓ cursor_write [not=a valid OpenCode write schema]
+
+     Probe runtime end.
+
+     Build · Cursor tool-card fake · 112ms
+
+     Switched agent to Build
+
+  ┃
+  ┃  probe live
+  ┃
+
+     Probe runtime start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+     --- a/src/sample.ts
+     +++ b/src/sample.ts
+     @@ -1,2 +1,2 @@
+      const a = 1;
+     -const b = 2;
+     +const b = 3;
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     → Explored — 1 read
+
+     ✓ todowrite
+
+     → Explored — 1 search
+
+     ✓ cursor_write [not=a valid OpenCode write schema]
+
+     Probe runtime end.
+
+     Build · Cursor tool-card fake · 12.1s
+
+  ┃
+  ┃
+  ┃
+  ┃  Build · Cursor tool-card fake Cursor
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /…/t…/2.0.0-runtime/project:cursor-tool-cards-probe  shift+tab agents  ctrl+p commands    /…/2.…/project:cursor-tool-cards-probe

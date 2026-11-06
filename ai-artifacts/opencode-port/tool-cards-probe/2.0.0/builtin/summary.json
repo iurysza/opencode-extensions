@@ -1,0 +1,45 @@
+{
+  "version": "2.0.0",
+  "shape": "runtime",
+  "exit": 0,
+  "sessionID": "ses_e4feab098ffeEBB6VlS8kIhaVn",
+  "stored": [
+    {
+      "name": "edit",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "shell",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "read",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "todowrite",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "glob",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    },
+    {
+      "name": "cursor_write",
+      "status": "completed",
+      "executed": true,
+      "metadataKeys": []
+    }
+  ],
+  "hostNeverExecuted": true
+}

@@ -271,3 +271,19 @@ Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime
 - `acquire.mjs` fetched `@opencode/cli-linux-x64` 2.0.0 and 2.2.5 with matching sha512. `test:host`, `test:req` and `test:t2` passed on both versions.
 - `test:tui` skipped: no termctrl on that host, which `linux-test.md` allows. No bugs found.
 - Linux ARM64 is still untested.
+
+## 2026-11-06 native tool cards probe (spike, branch `cursor-tool-cards-probe`)
+
+- Added `packages/opencode-cursor-sdk/test/tool-cards/` (fixture plugin plus sandboxed runner). Scripted fake source, no SDK, no network.
+- 2.2.5: `cursor_*` names render as generic rows. Built-in names (`edit`, `shell`, `read`) render native cards. 2.0.0 matches for the built-in shape.
+- Provider results cannot set `metadata`, so the edit card shows only its header, not the diff.
+- `hostNeverExecuted: true` in every run. Evidence and proposal: `ai-artifacts/opencode-port/tool-cards-probe/README.md`.
+- No production change: built-in names conflict with accepted fact F-06 and need approval.
+
+## 2026-11-06 native tool cards: built-in names (branch `cursor-tool-cards-probe`)
+
+- Iury approved the F-06 change (Inbox, "opencode cursor parity"). Updated F-06 in `facts.md` and `facts.meta.json`; F-09 unchanged.
+- Added `src/provider/native-tools.ts`: Cursor edit/write/shell/read/grep/glob/updateTodos map to OpenCode built-in names and inputs. Invalid input keeps `cursor_<type>`. Readable result text. Edit diffs follow the call as a ```diff text block, because the edit card reads diffs only from metadata.
+- `local-runtime.ts`: leaf native calls emit on `tool-call-started`, results on completion. A bridge call is held while a native call in the slice is open.
+- Probe `runtime` shape (real runtime, fake SDK) on 2.0.0 and 2.2.5: native cards, diff block visible, cursor_write fallback, all parts completed and provider-executed, host never executed. Evidence in `tool-cards-probe/<ver>/builtin/`.
+- Closed loop: `npm ci --ignore-scripts`, `build`, `check` (441 + 269 + 55 pass), `test:bridge` (14/14), `test:host`, `test:req` all green.

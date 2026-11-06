@@ -1,0 +1,59 @@
+ ⠏ tool cards runtime            +
+  ┃
+  ┃  [✓] Edit sample                                                                        tool cards runtime
+  ┃  [•] Verify cards
+  ┃                                                                                         Todo
+                                                                                            [✓] Edit sample
+     → Explored: 1 search                                                                   [•] Verify cards
+
+     ✓ cursor_write [not=a valid OpenCode write schema]
+
+     Probe runtime end.
+
+     Build · Cursor tool-card fake · 75ms
+
+     Switched agent to Build
+
+  ┃
+  ┃  probe live
+  ┃
+
+     Probe runtime start.
+
+  ┃
+  ┃  ← Edit src/sample.ts
+  ┃
+
+     --- a/src/sample.ts
+     +++ b/src/sample.ts
+     @@ -1,2 +1,2 @@
+      const a = 1;
+     -const b = 2;
+     +const b = 3;
+
+  ┃
+  ┃  $ echo probe && ls src
+  ┃
+  ┃  probe
+  ┃  sample.ts
+  ┃
+
+     → Explored: 1 read
+
+  ┃
+  ┃  # Todos
+  ┃
+  ┃  [✓] Edit sample
+  ┃  [•] Verify cards                                                                         ⬖ Getting started                ✕
+  ┃
+                                                                                                OpenCode includes free models so
+     → Explored: 1 search                                                                       you can start immediately.
+
+     ⠼ cursor_write [not=a valid OpenCode write schema]                                         Connect from 75+ providers to
+                                                                                                use other models, including
+  ┃                                                                                             Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                             Connect provider        /connect
+  ┃  Build · Cursor tool-card fake Cursor
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+   ■■■■⬝⬝⬝⬝ esc interrupt                              shift+tab agents  ctrl+p commands    /…/2.…/project:cursor-tool-cards-probe
