@@ -2,13 +2,14 @@
 export const PACKAGES = Object.freeze([
   Object.freeze({ directory: "packages/opencode-cursor-sdk", name: "@iurysza/opencode-cursor-sdk", component: "opencode-cursor-sdk" }),
   Object.freeze({ directory: "packages/opencode-cursor-cloud", name: "@iurysza/opencode-cursor-cloud", component: "opencode-cursor-cloud" }),
+  Object.freeze({ directory: "packages/opencode-model-context", name: "@iurysza/opencode-model-context", component: "opencode-model-context" }),
 ]);
 const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$(?![\s\S])/;
 export const REGISTRY = "https://registry.npmjs.org";
 
 export function packageForDirectory(directory) {
   const pkg = PACKAGES.find((entry) => entry.directory === directory);
-  if (!pkg) throw new Error("Only the two allowlisted child packages can be packed or published; root publication is forbidden");
+  if (!pkg) throw new Error("Only the allowlisted child packages can be packed or published; root publication is forbidden");
   return pkg;
 }
 

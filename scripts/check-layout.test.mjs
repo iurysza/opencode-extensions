@@ -6,9 +6,13 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { checkLayout } from "./check-layout.mjs";
 
-const packages = [
+const sdkPackages = [
   ["opencode-cursor-sdk", "@iurysza/opencode-cursor-sdk"],
   ["opencode-cursor-cloud", "@iurysza/opencode-cursor-cloud"],
+];
+const packages = [
+  ...sdkPackages,
+  ["opencode-model-context", "@iurysza/opencode-model-context"],
 ];
 
 function fixture(t) {
@@ -18,7 +22,9 @@ function fixture(t) {
   writeFileSync(join(root, "package-lock.json"), "{}");
   for (const [dir, name] of packages) {
     mkdirSync(join(root, "packages", dir), { recursive: true });
-    writeFileSync(join(root, "packages", dir, "package.json"), JSON.stringify({ name, dependencies: { "@cursor/sdk": "1.0.40" } }));
+    const manifest = { name };
+    if (sdkPackages.some(([entry]) => entry === dir)) manifest.dependencies = { "@cursor/sdk": "1.0.40" };
+    writeFileSync(join(root, "packages", dir, "package.json"), JSON.stringify(manifest));
   }
   return root;
 }
@@ -30,7 +36,7 @@ function updateManifest(root, path, update) {
   writeFileSync(file, JSON.stringify(manifest));
 }
 
-test("valid fixture passes with the same exact SDK runtime dependency in both packages", (t) => {
+test("valid fixture passes with the SDK pin on the two Cursor packages only", (t) => {
   assert.deepEqual(checkLayout(fixture(t)), []);
 });
 
@@ -40,7 +46,7 @@ test("missing child manifest fails", (t) => {
   assert.deepEqual(checkLayout(root), ["missing manifest: packages/opencode-cursor-cloud/package.json"]);
 });
 
-for (const [dir] of packages) {
+for (const [dir] of sdkPackages) {
   const path = `packages/${dir}/package.json`;
   const pinError = `packages/${dir} must declare @cursor/sdk 1.0.40 as a runtime dependency`;
   for (const version of ["1.0.23", "^1.0.40", "~1.0.40", "latest", "npm:@cursor/sdk@1.0.40"]) {
@@ -68,7 +74,7 @@ for (const [dir] of packages) {
   for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
     test(`${dir} cannot depend on the other workspace through ${field}`, (t) => {
       const root = fixture(t);
-      const other = packages.find(([entry]) => entry !== dir)[1];
+      const other = sdkPackages.find(([entry]) => entry !== dir)[1];
       updateManifest(root, path, (pkg) => { pkg[field] = { ...pkg[field], [other]: "0.0.0" }; });
       assert.deepEqual(checkLayout(root), [`packages/${dir} must not depend on ${other}`]);
     });
@@ -97,8 +103,38 @@ test("root lockfile is required", (t) => {
   assert.deepEqual(checkLayout(root), ["root package-lock.json missing"]);
 });
 
-test("third package is forbidden", (t) => {
+for (const [dir] of packages) {
+  if (sdkPackages.some(([entry]) => entry === dir)) continue;
+  const path = `packages/${dir}/package.json`;
+  for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+    test(`${dir} must not declare @cursor/sdk in ${field}`, (t) => {
+      const root = fixture(t);
+      updateManifest(root, path, (pkg) => { pkg[field] = { ...pkg[field], "@cursor/sdk": "1.0.40" }; });
+      assert.deepEqual(checkLayout(root), [`packages/${dir} must not depend on @cursor/sdk`]);
+    });
+  }
+  test(`${dir} rejects a child lockfile`, (t) => {
+    const root = fixture(t);
+    writeFileSync(join(root, "packages", dir, "package-lock.json"), "{}");
+    assert.deepEqual(checkLayout(root), [`child lockfile forbidden: packages/${dir}/package-lock.json`]);
+  });
+  test(`${dir} rejects a renamed child`, (t) => {
+    const root = fixture(t);
+    updateManifest(root, path, (pkg) => { pkg.name = "@other/package"; });
+    assert.deepEqual(checkLayout(root), [`packages/${dir} must be named ${packages.find(([entry]) => entry === dir)[1]}`]);
+  });
+  for (const field of ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]) {
+    test(`${dir} cannot depend on another workspace through ${field}`, (t) => {
+      const root = fixture(t);
+      const other = sdkPackages[0][1];
+      updateManifest(root, path, (pkg) => { pkg[field] = { ...pkg[field], [other]: "0.0.0" }; });
+      assert.deepEqual(checkLayout(root), [`packages/${dir} must not depend on ${other}`]);
+    });
+  }
+}
+
+test("an unlisted package is forbidden", (t) => {
   const root = fixture(t);
   mkdirSync(join(root, "packages/third-package"));
-  assert.deepEqual(checkLayout(root), ["packages/ must contain exactly opencode-cursor-sdk, opencode-cursor-cloud; found opencode-cursor-cloud, opencode-cursor-sdk, third-package"]);
+  assert.deepEqual(checkLayout(root), ["packages/ must contain exactly opencode-cursor-sdk, opencode-cursor-cloud, opencode-model-context; found opencode-cursor-cloud, opencode-cursor-sdk, opencode-model-context, third-package"]);
 });

@@ -7,7 +7,7 @@ OpenCode 2.x ports of Iury's Cursor extensions.
 | Topic | Rule |
 | --- | --- |
 | Contract | The execution contract lives in `ai-artifacts/opencode-port/`. Start with `goal.md`, `facts.md` and `plan.md`. Do not edit `facts.md` or `facts.meta.json` without Iury's approval. Append progress to `dev-log.md`. |
-| Packages | Exactly two: `@iurysza/opencode-cursor-sdk` and `@iurysza/opencode-cursor-cloud`. The root workspace stays private. |
+| Packages | Exactly three: `@iurysza/opencode-cursor-sdk`, `@iurysza/opencode-cursor-cloud`, and `@iurysza/opencode-model-context`. The root workspace stays private. |
 | Lockfile | One root `package-lock.json`. Child lockfiles are forbidden. Install with `npm install --ignore-scripts`. |
 | Host API | Production code uses public `@opencode/plugin` exports only. OpenCode internals may be read for test analysis, never imported. |
 | Hosts | Supported: OpenCode `>=2.0.0 <3`. Type contracts compile against 2.0.0 (`opencode-plugin-min`) and 2.2.5. |

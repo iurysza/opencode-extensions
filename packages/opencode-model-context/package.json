@@ -1,0 +1,36 @@
+{
+  "name": "@iurysza/opencode-model-context",
+  "version": "0.0.0",
+  "description": "OpenCode 2.x server plugin that inserts a per-model vendor prompt between the harness base and AGENTS.md.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./dist/server.js",
+    "./server": "./dist/server.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@opencode/plugin": ">=2.0.0 <3"
+  },
+  "peerDependenciesMeta": {
+    "@opencode/plugin": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.min.json",
+    "test": "vitest run test/unit",
+    "test:host": "node test/t1/run-model-context.mjs"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org",
+    "provenance": true
+  }
+}

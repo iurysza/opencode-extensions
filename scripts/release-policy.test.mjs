@@ -40,7 +40,7 @@ function fixture(t, entry = pkg) {
   return { root, child, write };
 }
 
-test("exactly two independent stable component tags round-trip", () => {
+test("each allowlisted package has an independent stable component tag", () => {
   for (const entry of PACKAGES) {
     assert.deepEqual(parseReleaseTag(`${entry.component}-v${version}`), { ...entry, version, tag: `${entry.component}-v${version}` });
   }

@@ -31,7 +31,9 @@ jobs:
         run: node packages/opencode-cursor-sdk/test/matrix/acquire.mjs 2.0.0 2.2.5
       - name: Run Linux endpoint host, request and offline SDK tests under their fail-closed sandbox
         run: |
-          npm run test:host
+          npm run test:host -w @iurysza/opencode-cursor-sdk
+          npm run test:host -w @iurysza/opencode-cursor-cloud
+          npm run test:host -w @iurysza/opencode-model-context
           npm run test:req
           npm run test:t2
       - name: Check release policy and local tarballs
@@ -64,6 +66,8 @@ jobs:
         run: node packages/opencode-cursor-sdk/test/matrix/acquire.mjs 2.0.0 2.2.5
       - name: Run endpoint host, request and offline SDK tests under their fail-closed sandbox
         run: |
-          npm run test:host
+          npm run test:host -w @iurysza/opencode-cursor-sdk
+          npm run test:host -w @iurysza/opencode-cursor-cloud
+          npm run test:host -w @iurysza/opencode-model-context
           npm run test:req
           npm run test:t2

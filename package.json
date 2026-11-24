@@ -6,7 +6,8 @@
   "type": "module",
   "workspaces": [
     "packages/opencode-cursor-sdk",
-    "packages/opencode-cursor-cloud"
+    "packages/opencode-cursor-cloud",
+    "packages/opencode-model-context"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
