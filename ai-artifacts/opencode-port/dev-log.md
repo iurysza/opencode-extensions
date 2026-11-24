@@ -296,3 +296,13 @@ Added two offline tests to `packages/opencode-cursor-sdk/test/unit/local-runtime
 - `npm audit --omit=dev` no longer reports GHSA-mrhx-c7xc-m3w5 (26 moderate, none high). Full `npm audit` still reports it only at `node_modules/opencode-plugin-min/node_modules/zod` (dev-only 2.0.0 host typings). This supersedes the accepted 1.0.37 audit risk for the runtime path.
 - Not done: T2 offline and keyless create probes were not rerun on 1.0.40 (no `.fixtures/inspect` binaries in this worktree). G7 requalification still applies. Research notes that record 1.0.37 findings are unchanged.
 - Validation: `npm ci --ignore-scripts`, `npm run build`, `npm run check` pass (scripts 55/55, SDK 413 passed + 1 skipped, Cloud 284). `load-boundary.test.ts` 5/5.
+
+## 2026-11-24 model-context plugin (branch `model-context`)
+
+- New package `@iurysza/opencode-model-context`. On `context`, `compaction`, and `generate` it reads the agents2 map and splices the vendor prompt at system index 1.
+- Cursor bridge forwards `system`, so `cursor` is not in the default skip list. Default skip is `claude-agent`, unioned with the map and the `skipProviders` option.
+- `ctx.agent.get({ agentID })` exists on 2.0.0 and 2.2.5. The plugin uses it on both.
+- `modelFileStem` also strips an `@...` suffix. A map key that keeps that suffix is tried before the stripped stem.
+- Host evidence on OpenCode 2.0.0 and 2.2.5: vendor at index 1, exact `gpt-6.2-sol`, family `gpt.md`, no part for `mystery-1`, mid-session switch, `claude-agent` skipped, custom agent skipped, live edit. `npm ci --ignore-scripts`, `npm run build`, and `npm run check` are green (scripts 65, SDK 460, Cloud 284, model-context 36).
+- 2.0.0 `POST /compact` returned 200 without invoking the compaction hook. The hook name was accepted. `generate` did run and carried the vendor part. 2.2.5 invoked both hooks.
+- Not done: agents2 `lock.json` bump, `opencodePlugins` / `payloadBuild`, and the golden files.

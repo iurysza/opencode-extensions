@@ -1,4 +1,5 @@
 {
   "packages/opencode-cursor-sdk": "0.0.0",
-  "packages/opencode-cursor-cloud": "0.0.0"
+  "packages/opencode-cursor-cloud": "0.0.0",
+  "packages/opencode-model-context": "0.0.0"
 }

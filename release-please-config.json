@@ -21,6 +21,15 @@
       "include-v-in-tag": true,
       "tag-separator": "-",
       "changelog-path": "CHANGELOG.md"
+    },
+    "packages/opencode-model-context": {
+      "release-type": "node",
+      "package-name": "@iurysza/opencode-model-context",
+      "component": "opencode-model-context",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true,
+      "tag-separator": "-",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }
